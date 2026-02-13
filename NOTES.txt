@@ -1,0 +1,38 @@
+
+ToDo:
+
+
+Logging Util:
+
+    Build:
+        build c code:
+            linux:
+                cd src/logging_util
+                gcc -c current_time_formatted.c
+                ar rcs current_time_formatted.a current_time_formatted.o
+            windows:
+                cl -TC -c current_time_formatted.c
+                lib -nologo current_time_formatted.obj -out:current_time_formatted.lib
+        build odin code:
+            cd .. # from (src/logging_util)
+            odin build .
+
+    Run:
+
+
+Installed with:
+    https://odin-lang.org/docs/install/#others-unix
+        built from source
+
+    location:
+    /usr/local/Odin
+
+Usage:
+
+    build with cmd "odin build <project root dir>"
+    run with cmd "./<executable_name>"
+        you can also run with cmd "odin run <project root dir>", which builds then runs, then deletes executable
+    
+    source:
+        https://odin-lang.org/docs/overview/
+        
