@@ -38,7 +38,8 @@ main :: proc() {
 	// logger.print("new line after log message",  {indent = 1, new_line_end = true})
 
 	// // 5. Prepend Datetime
-	// logger.prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S"
+	// logger.prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S.%f %Z"; // other available formats: https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
+
 	// logger.timezone = "local"
 	// logger.print("multiline\nmessage\nwith\nprepend_datetime_fmt")
 

@@ -80,10 +80,23 @@ init_log :: proc(
     log.console_indent = console_indent
     log.logfile_indent = logfile_indent
     log.timezone = timezone
-    log.prepend_datetime_fmt = prepend_datetime_fmt
     log.max_indents = max_indents
     log.max_message_chars = max_message_chars
     log.max_line_chars = max_line_chars
+
+    // fix weird timezone bug in C:
+    // replace "%Z" with hardcoded "UTC" if
+    // "%Z" substring in prepend_datetime_fmt and timezone = "UTC"
+    log.prepend_datetime_fmt = strings.clone(prepend_datetime_fmt) // clone prepend_datetime_fmt so the Log owns it
+    if strings.contains(log.prepend_datetime_fmt, "%Z") && log.timezone == "UTC" {
+        new_fmt: string; was_allocation: bool
+        new_fmt, was_allocation = strings.replace_all(log.prepend_datetime_fmt, "%Z", "UTC")
+        // https://pkg.odin-lang.org/core/strings/#replace_all
+        // https://pkg.odin-lang.org/core/strings/#replace <-- more info in docs for replace
+        delete(log.prepend_datetime_fmt) // free the previous version
+        log.prepend_datetime_fmt = strings.clone(new_fmt) // clone the new version
+        if was_allocation do delete(new_fmt) // delete the new_fmt string
+    }
 
     log.print = print
 	
@@ -123,22 +136,6 @@ init_log :: proc(
 	} else {
 		log.output_to_logfile = false
 	}
-
-    // fix weird timezone bug in C:
-    // replace "%Z" with hardcoded "UTC" if
-    // "%Z" substring in prepend_datetime_fmt and timezone = "UTC"
-    if strings.contains(log.prepend_datetime_fmt, "%Z") && log.timezone == "UTC" {
-        new_fmt: string; was_alloc: bool
-        new_fmt, was_alloc = strings.replace_all(log.prepend_datetime_fmt, "%Z", "UTC")
-        // https://pkg.odin-lang.org/core/strings/#replace_all
-        // https://pkg.odin-lang.org/core/strings/#replace <-- more info in docs for replace
-        if was_alloc {
-            log.prepend_datetime_fmt = strings.clone(new_fmt)
-            delete(new_fmt)
-        } else {
-            log.prepend_datetime_fmt = new_fmt
-        }
-    }
 	
     return log
 }
@@ -293,13 +290,52 @@ get_formatted_message :: proc(
 		// p0 = strings.repeat(mock_indent, num_indents) + fmt.sprintf("%c ", div_mark)
 	}
 
-    return "", false
+    return "", true
 
 }
 
-// binding odin to c: https://odin-lang.org/news/binding-to-c/
+// get_formatted_current_time returns the current datetime as a formatted string
+//
+// - timezone: "local" or "UTC", defaults to UTC
+// - format:   format to display datetime in
+//             based on strftime. available formats: https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
+//
+// Returns: the formatted datetime string (or empty on error)
+get_formatted_current_time :: proc(
+    timezone:    string,
+    format:      string,
+    buffer_size: int = 128,
+) -> (
+    string,
+    bool,
+) {
+
+    // allocate empty cstring of buffer_size
+    buffer, err := mem.alloc(buffer_size)
+    if err != nil {
+        fmt.eprintf("datetime cstring allocation failed: %v\n", err)
+        return "", false
+    }
+    datetime_cstr := cstring(buffer)
+    defer mem.free(buffer)
+
+    rc: c.int = get_current_time(
+        cstring(raw_data(timezone)),
+        datetime_cstr,
+        c.size_t(buffer_size),
+        cstring(raw_data(format)),
+    )
+    if rc != 0 {
+        fmt.eprintf("get_current_time failed → %d\n", rc)
+        return "", false
+    }
+
+    return string(datetime_cstr), true
+}
+// used a c binding for get_formatted_current_time() because I failed to get the local time in odin, only UTC. Also setting the timezone seems to require the UTC offset, which gets complicated because of daylights saving time. Also I couldn't find a way to format it via a user provided format string. see odin time package docs: https://pkg.odin-lang.org/core/time
 when ODIN_OS == .Windows do foreign import current_time_formatted "current_time_formatted.lib"
 when ODIN_OS == .Linux   do foreign import current_time_formatted "current_time_formatted.a"
+// binding odin to c: https://odin-lang.org/news/binding-to-c/
 foreign current_time_formatted {
     get_current_time :: proc(
         timezone: cstring,
@@ -308,167 +344,3 @@ foreign current_time_formatted {
         format: cstring,
     )-> c.int ---
 }
-
-// Utility to get formatted time via C
-get_formatted_current_time :: proc(
-    timezone: string,
-    format:   string,
-    buf_size: int = 128,
-) -> (
-    datetime_str: string,
-    ok: bool
-) {
-
-    // Allocate buffer for C to write into (+1 for null terminator)
-    buf := make([]byte, buf_size + 1)
-    defer delete(buf) // free the buffer memory when this function returns
-    mem.zero_slice(buf) // Zero out the buffer (good hygiene, though C will null-terminate)
-
-    // Call C function
-    rc: c.int = get_current_time(
-        cstring(raw_data(timezone)),
-        cstring(raw_data(buf)),
-        c.size_t(buf_size),
-        cstring(raw_data(format)),
-    )
-    if rc != 0 {
-        fmt.eprintf("get_current_time failed with code %d\n", rc)
-        return "ERROR: failed to get formatted time", false
-    }
-
-    // Return the formatted cstring cast to string
-    // NOTE: string(my_cstring) is "O(N) time as it will scan the memory, looking for the null terminator, in order to determine the length of the string" - https://odin-lang.org/news/binding-to-c/
-    datetime_str = string(buf)
-    return datetime_str, true
-}
-
-
-// current_time_formatted returns the current time as a formatted string.
-//
-// - timezone: IANA timezone name (e.g. "America/Phoenix", "UTC", "Europe/London")
-//             If empty -> uses system local time.
-// - format:   Go-style reference time format (uses "2006-01-02 15:04:05" as reference)
-//             If empty -> defaults to "2006-01-02 15:04:05 MST" (human readable)
-//             Common presets: time.RFC3339, time.ANSIC, time.Kitchen, etc.
-//
-// Returns: the formatted time string (or empty on error)
-
-// EXMAPLE USAGE:
-// fmt.println("Local (default):", current_time_formatted("", ""))
-// fmt.println("UTC (RFC3339):", current_time_formatted("UTC", time.RFC3339))
-// fmt.println("Phoenix (custom):", current_time_formatted("America/Phoenix", "2006-01-02 15:04:05 MST"))
-// fmt.println("Tokyo (kitchen):", current_time_formatted("Asia/Tokyo", time.Kitchen))
-
-
-/*
-
-@(private)
-current_time_formatted :: proc(
-    timezone: string,
-    format: string
-) -> (
-	formatted_time: string, // formatted string of current time in specified timezone
-	ok: bool,               // success flag
-) {
-
-    // Get current UTC time
-    t: time.Time = time.now()
-    unix_nanoseconds: i64 = time.time_to_unix_nano(t)
-
-    // // Convert to desired timezone
-    // if timezone != "UTC" {
-    //     loc := time.load_location(timezone)
-    //     t = time.time_in_location(t, loc)
-    // }
-
-    // Format and return the time
-    builder := strings.Builder{}
-    strings.builder_init(&builder)
-    defer strings.builder_destroy(&builder)
-    err := time.format_to_writer(&builder, t, format)
-    if err != nil {
-        fmt.eprintf("Format error: %v\n", err)
-        return "Error formatting time", false
-    }
-    return strings.to_string(builder), true
-}
-
-
-
-@(private)
-current_time_formatted :: proc(
-    timezone: string,
-    format: string
-) -> (
-	formatted_time: string, // formatted string of current time in specified timezone
-	ok: bool,               // success flag
-) {
-
-    // Load timezone if provided
-    loc: ^time.Location = nil
-    if timezone != "local" {
-        loaded_loc, ok := time.load_location(timezone)
-        if ok {
-            loc = loaded_loc
-        } else {
-            // Fallback to local if timezone fails
-            fmt.eprintf("Warning: timezone '{}' not found, using local time\n", timezone)
-        }
-    }
-
-    // Get current time and convert to desired timezone (or local if no valid tz)
-    t: time.Time = time.now()
-    
-    loc != nil ? time.time_in_location(time.now(), loc) : time.now_local()
-
-    // Format the time
-    builder := strings.Builder{}
-    strings.builder_init(&builder)
-    defer strings.builder_destroy(&builder)
-    time.format_to_writer(&builder, t, format)
-
-    return strings.to_string(builder), true
-}
-
-@(private)
-current_time_formatted :: proc(
-    timezone: string,
-    format: string
-) -> (
-	formatted_time: string, // formatted string of current time in specified timezone
-	ok: bool,               // success flag
-) {
-
-    // Get current time
-    t: time.Time = time.now() // UTC timezone
-
-    // Load timezone
-    t2: time.Time = time.now_local() // UTC timezone
-
-    loc := time.local_location()
-    if timezone != "local" {
-        loaded, ok := time.load_location(timezone)
-        if ok {
-            loc = loaded
-        } else {
-            // Fallback to local if timezone fails
-            fmt.eprintf("Warning: timezone '{}' not found, using local time: '{}'\n", timezone, loc.name)
-        }
-    }
-
-    // Convert to desired timezone
-    t = time.time_in_location(t, loc)    
-
-    // Format the time
-    builder := strings.Builder{}
-    strings.builder_init(&builder)
-    defer strings.builder_destroy(&builder)
-    err := time.format_to_writer(&builder, t, format)
-    if err != nil {
-        fmt.eprintf("Format error: %v\n", err)
-        return "Error formatting time", false
-    }
-
-    return strings.to_string(builder), true
-}
-*/

@@ -73,4 +73,25 @@ int get_current_time(const char* timezone, char *datetime_str, size_t datetime_s
     free(format2);
     return 0;
 }
+/*
+// TEST
+// build: gcc current_time_formatted.c -o test_current_time_formatted
+// run: ./test_current_time_formatted
+int main() {
+    char *prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S.%f %Z";
+    // char *timezone = "local";
+    char *timezone = "UTC";
+    char datetime_str[128];
+    get_current_time(
+        timezone,
+        datetime_str,
+        sizeof(datetime_str),
+        prepend_datetime_fmt
+    );
+    printf("%s\n", datetime_str);
+    return 0;
+}
+*/
+
+
 

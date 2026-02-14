@@ -16,8 +16,9 @@ Logging Util:
         build odin code:
             cd .. # from (src/logging_util)
             odin build .
-
     Run:
+        liux:
+            ./src
 
 
 Installed with:
