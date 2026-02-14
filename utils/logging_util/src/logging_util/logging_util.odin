@@ -10,24 +10,24 @@ import "core:mem"
 import "core:c"
 import "core:math"
 import "core:strconv" // used for high performance casting in get_process_memory_usage()
-
+import "core:slice"
 
 LOGGING_ENABLED :: true // toggle logging entirely
 
 Log :: struct {
 
     filepath:              string,       // path to the log file
-    console_stream:        os.Handle,    // stream to print console output to (e.g., stdout, stderr)
-    file_handle:           os.Handle,    // tbd
-    clear_old_log:         bool,         // flag to clear the log file or not
-    output_to_console:     bool,         // flag to print to the console or not
+    file_stream:           os.Handle,    // stream to print logfile output to
     output_to_logfile:     bool,         // flag to print to the log file or not
-    console_indent:        string,       // what an indent looks like in the console
     logfile_indent:        string,       // what an indent looks like in the log file
+
+    console_stream:        os.Handle,    // stream to print console output to (e.g., stdout, stderr)
+    output_to_console:     bool,         // flag to print to the console or not
+    console_indent:        string,       // what an indent looks like in the console
+
     prepend_datetime_fmt:  string,       // format specifying datetime to prepend to each line printed
     timezone:              string,       // timezone to use if prepend_datetime_fmt is not an empty string
     prepend_memory_usage:  bool,         // prepend the memory used and allocated to the program using the logging util
-
     max_indents:           int,          // max number of indents the user can indent a log message
     max_message_chars:     u32,          // max number of characters per message, tested w/ value: 500
     max_line_chars:        u32,          // max number of characters per line (must be less than MAX_MESSAGE_CHARS), tested w/ value: 150
@@ -60,13 +60,12 @@ Log :: struct {
 
 init_log :: proc(
     filepath:             string    = "",
-	console_stream:       os.Handle = 0, // 0 to os.stdout in init
-	file_handle:          os.Handle = 0, // 0 to file at filepath in init
+    clear_old_log:        bool      = true, // flag to clear the log file or not
     output_to_logfile:    bool      = true,
-    clear_old_log:        bool      = true,
+	logfile_indent:       string    = "    ",
+	console_stream:       os.Handle = 0, // 0 maps to os.stdout
     output_to_console:    bool      = true,
 	console_indent:       string    = "|   ",
-	logfile_indent:       string    = "    ",
     prepend_datetime_fmt: string    = "",
 	timezone:             string    = "UTC",
     prepend_memory_usage: bool      = false,
@@ -75,14 +74,51 @@ init_log :: proc(
 	max_line_chars:       u32       = 1000,
 ) -> ^Log {
 
-	// set log struct members based on arguments, defaults, and available procedures
+	// Set log struct members based on arguments, defaults, and available procedures
     log := new(Log)
-    log.filepath = filepath
-    log.output_to_console = output_to_console
-    log.output_to_logfile = output_to_logfile
-    log.clear_old_log = clear_old_log
-    log.console_indent = console_indent
+	
+	// Return early if logging is disable
+	if !LOGGING_ENABLED do return log;
+
+	// only allow output to logfile if a valid filepath is provided
+	// create logfile if it doesn't exist, and clear it if user specified to do so
+	if log.filepath != "" {
+		mode: int = os.O_WRONLY | os.O_CREATE
+		if clear_old_log do mode |= os.O_TRUNC
+		else do mode |= os.O_APPEND
+		// os.O_WRONLY opens the file in write-only mode. You can't read from the file in this mode
+		// os.O_CREATE create the file if it does not already exist
+		// os.O_TRUNC  if the file exists, erase everything inside it 
+		handle, err := os.open(log.filepath, mode, 0o644)
+		if err != os.ERROR_NONE {
+            // so just set output_to_logfile to false if file open fails to not crash the program
+            fmt.eprintln("LOG ERROR: failed to create logfile: %s", err)
+            log.filepath = ""
+            log.file_stream = 0
+			log.output_to_logfile = false
+		} else {
+            log.filepath = filepath
+            log.file_stream = handle
+            log.output_to_logfile = true
+        }
+    } else {
+		log.output_to_logfile = false
+	}
     log.logfile_indent = logfile_indent
+
+	// Map 0 to os.stdout. Odin doesn't allow runtime-only values like os.stdout as default paramater values
+    stream: os.Handle = console_stream == 0 ? os.stdout : console_stream
+    if !slice.contains([]os.Handle{os.stdout, os.stderr}, stream) {
+        // Any other handle is considered invalid for the 'console'
+        // so just disable console output to not crash the program
+        fmt.eprintln("LOG ERROR: invalid console stream")
+        log.console_stream = 0
+        log.output_to_console = false
+    } else {
+        log.console_stream = stream
+        log.output_to_console = output_to_console
+    }
+    log.console_indent = console_indent
 
     // fix weird timezone bug in C:
     // replace "%Z" with hardcoded "UTC" if
@@ -97,51 +133,17 @@ init_log :: proc(
         log.prepend_datetime_fmt = strings.clone(new_fmt) // clone the new version
         if was_allocation do delete(new_fmt) // delete the new_fmt string
     }
-
     log.timezone = timezone
     log.prepend_memory_usage = prepend_memory_usage
+
+    // assign message maximums
     log.max_indents = max_indents
     log.max_message_chars = max_message_chars
     log.max_line_chars = max_line_chars
 
+    // map this log struct instance to the first arg of the print procedure so you can call it via log->print("message")
+    // NOTE: removing this makes calling the procedures with "log->" cause a seg fault
     log.print = print
-	
-	// return early if logging is disable
-	if !LOGGING_ENABLED do return log;
-
-	// handle runtime-only values like os.stdout that can't be defaulted to in the proc args
-	switch console_stream {
-		case 0:
-			log.console_stream = os.stdout
-		case os.stdout, os.stderr:
-			// It's already a valid standard stream, keep as is
-			log.console_stream = console_stream
-		case:
-			// Any other handle is considered invalid for the 'console'
-			// so fail silently by disabling console output
-			log.output_to_console = false
-	}
-
-	// only allow output to logfile if a valid filepath is provided
-	// create logfile if it doesn't exist, and clear it if user specified to do so
-	if log.filepath != "" {
-		mode: int = os.O_WRONLY | os.O_CREATE
-		if log.clear_old_log do mode |= os.O_TRUNC
-		else do mode |= os.O_APPEND
-		// os.O_WRONLY opens the file in write-only mode. You can't read from the file in this mode
-		// os.O_CREATE create the file if it does not already exist
-		// os.O_TRUNC  if the file exists, erase everything inside it 
-		handle, err := os.open(log.filepath, mode, 0o644)
-		if err == os.ERROR_NONE {
-			log.file_handle = handle
-		} else {
-			// set output_to_logfile to false if file open fails
-			log.output_to_logfile = false
-			return log
-		}
-	} else {
-		log.output_to_logfile = false
-	}
 	
     return log
 }
@@ -150,8 +152,8 @@ close_log :: proc(
 	log: ^Log
 ) {
 	if log == nil do return
-	if log.file_handle != 0 {
-		os.close(log.file_handle)
+	if log.file_stream != 0 {
+		os.close(log.file_stream)
 	}
     delete(log.prepend_datetime_fmt)
 	delete(log.prev_console_message)
@@ -159,7 +161,7 @@ close_log :: proc(
 }
 
 print :: proc(
-	log:                ^Log,                // you can call print() via log.print("message") because 'log' is a pointer to the Log struct
+	log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
 	msg:                string,              // message to print
     i:                  int         = 0,     // number of indents to put in front of the string, defaults to 0
     ns:                 bool        = false, // print a new line in before the string, defaults to false
@@ -182,7 +184,7 @@ print :: proc(
 
     // Validate arguments
 	if log == nil {
-		fmt.eprintln("ERROR: must pass a Log struct pointer")
+		fmt.eprintln("LOG ERROR: must pass a Log struct pointer")
         return "", "", false
 	}
 
@@ -199,13 +201,21 @@ print :: proc(
 		// Format console string
 		console_str, ok = get_formatted_message(log, msg, log.console_indent, i, ns, ne, d, end)
 		if !ok {
-			fmt.eprintln("ERROR: failed to format console string")
+			fmt.eprintln("LOG ERROR: failed to format console string")
             return "", "", false
         }
 
+        // Print message to console
+        fmt.fprint(log.console_stream, console_str)
+        // fmt.fprint takes a file handle and variadic args, and prints them without appending a new line character
 
+        // Update previous message tracking
+        delete(log.prev_console_message)  // Free old string
+        log.prev_console_message = strings.clone(console_str)  // Store new string
 
 	}
+
+    // TODO: try to find a way to reuse get formatted string? probably make it take a list of indent types and return a list?, should be easy!
 
     // Print to log file
 	output_to_logfile: bool = (of == nil) ? log.output_to_logfile : of.(bool)
@@ -243,7 +253,7 @@ get_formatted_message :: proc(
 
     // Validate user input arguments
     if num_indents < 0 || num_indents > log.max_indents {
-        fmt.eprintln("ERROR: num indents, i, must be between 0 and log.max_indents of %d (inclusive), or log.max_indents must be increased in its initialization", log.max_indents)
+        fmt.eprintln("LOG ERROR: num indents, i, must be between 0 and log.max_indents of %d (inclusive), or log.max_indents must be increased in its initialization", log.max_indents)
         return "", false
     }
 
@@ -253,13 +263,10 @@ get_formatted_message :: proc(
     total_indent3: string = draw ? total_indent2 : total_indent1
 
     // Prepend info buffers and variables
-    sb := strings.builder_make()
-    defer strings.builder_destroy(&sb)
-    formatted_message = "" // this will hold the final formatted message with prepended info and indents, ready to be printed to console or logfile
+    p: string = "" // p = prepended info text
+    p0: string = "" // p0 = mock indents: If info is prepended to each line, mock indents are tiny indents before the prepended info. They exist so VS Code's code folding feature continues to work when there's prepended info, and the prepended info remains veritically alligned.
     div_mark: rune = '-'
     mock_indent: string = " "
-    p0: string = "" // p0 = mock indents (if info is prepended to each line, mock indents are tiny indents before the prepended info)
-    p: string = ""; // p = prepended info text
     prepend_stuff: bool = log.prepend_datetime_fmt != "" || log.prepend_memory_usage
     if prepend_stuff {
 
@@ -270,7 +277,7 @@ get_formatted_message :: proc(
                 log.prepend_datetime_fmt
             )
             if !ok {
-                fmt.eprintln("ERROR: failed to get current time for prepending")
+                fmt.eprintln("LOG ERROR: failed to get current time for prepending")
                 return "", false // TODO: set msg to error msg + msg
             }
             // fmt.println("datetime_str:", datetime_str)
@@ -288,22 +295,62 @@ get_formatted_message :: proc(
             p = fmt.tprintf("%s%17s", p, mem_usage_str)
         }
 
-        // fill p0 memory with mock indents + div_mark
-        p0 = fmt.tprintf("%s%r", strings.repeat(mock_indent, num_indents), div_mark)
-        // original python: p0 = mock_indent*i + div_mark
-        // original c:         p0_len += snprintf(
-            // p0 + p0_len,
-            // sizeof(p0) - p0_len,
-            // "%c ", div_mark);
-        // WHY IS THERE AN EXTRA SPACE IN THE ORIGINAL C CODE?
-
-
-        // original python: p = (' ' * (max_estimated_indents + 1 - len(mock_indent*i))) + p + f'{div_mark}  ' # put small 1-space-sized indents before everything so VS Code's code folding feature continues to work when there's prepended info such as memory or datetime
-    
+        // Create prepended info strings
+        p0 = strings.repeat(mock_indent, num_indents)
+        p = fmt.tprintf("%s%s%r  ",
+            strings.repeat(" ", log.max_indents + 1 - (len(mock_indent) * num_indents)),
+            p,
+            div_mark,
+        )
     }
-    // original python: blank_p = p0 + ' ' * (len(p) - (len(div_mark) + 2)) + f'{div_mark}  ' # blank_p = p but w/ prepend info removed, only marks remain
+    // blank_p is the same as p but w/ prepend info removed, only marks remain
+    blank_p: string = fmt.tprintf("%s%r%s%c  ",
+        p0,
+        div_mark,
+        strings.repeat(" ", len(p) - 3),
+        div_mark,
+    )
 
-    return "", true
+    // Start building final formatted message
+    sb: strings.Builder
+    strings.builder_init(&sb, context.temp_allocator)
+    defer strings.builder_destroy(&sb)
+
+    if newline_start {
+        if prepend_stuff do strings.write_string(&sb, blank_p)
+        strings.write_string(&sb, total_indent3)
+        strings.write_string(&sb, end)
+    }
+    
+    lines := strings.split(msg, "\n", context.temp_allocator)
+    defer delete(lines)
+    for line, idx in lines {
+        empty_line := line == ""
+
+        if prepend_stuff {
+            if empty_line {
+                // empty line → use blank alignment helper
+                strings.write_string(&sb, blank_p)
+            } else {
+                // non-empty → mock indent + divider + space
+                strings.write_string(&sb, p0)
+                strings.write_rune (&sb, div_mark)
+                strings.write_string(&sb, p)
+            }
+        }
+        strings.write_string(&sb, empty_line ? total_indent3 : total_indent1)
+        strings.write_string(&sb, line)
+        strings.write_string(&sb, end)
+    }
+
+    if newline_end {
+        if prepend_stuff do strings.write_string(&sb, blank_p)
+        strings.write_string(&sb, total_indent3)
+        strings.write_string(&sb, end)
+    }
+
+    formatted_message = strings.to_string(sb)
+    return formatted_message, true
 
 }
 
