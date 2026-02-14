@@ -1,4 +1,4 @@
-package logging
+package logging_util
 
 import "core:fmt"
 import "core:os"
@@ -8,6 +8,9 @@ import "core:time/timezone"
 import "core:sync"
 import "core:mem"
 import "core:c"
+import "core:math"
+import "core:strconv" // used for high performance casting in get_process_memory_usage()
+
 
 LOGGING_ENABLED :: true // toggle logging entirely
 
@@ -37,7 +40,7 @@ Log :: struct {
 
     // pointer to print procedure
     print: proc(
-        this:               ^Log,                // you can call print() via log->print("message") because 'this' is a pointer to the Log struct
+        log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
         msg:                string,              // message to print
         i:                  int         = 0,     // number of indents to put in front of the string, defaults to 0
         ns:                 bool        = false, // print a new line in before the string, defaults to false
@@ -66,6 +69,7 @@ init_log :: proc(
 	logfile_indent:       string    = "    ",
     prepend_datetime_fmt: string    = "",
 	timezone:             string    = "UTC",
+    prepend_memory_usage: bool      = false,
 	max_indents:          int       = 10,
 	max_message_chars:    u32       = 10000,
 	max_line_chars:       u32       = 1000,
@@ -79,10 +83,6 @@ init_log :: proc(
     log.clear_old_log = clear_old_log
     log.console_indent = console_indent
     log.logfile_indent = logfile_indent
-    log.timezone = timezone
-    log.max_indents = max_indents
-    log.max_message_chars = max_message_chars
-    log.max_line_chars = max_line_chars
 
     // fix weird timezone bug in C:
     // replace "%Z" with hardcoded "UTC" if
@@ -97,6 +97,12 @@ init_log :: proc(
         log.prepend_datetime_fmt = strings.clone(new_fmt) // clone the new version
         if was_allocation do delete(new_fmt) // delete the new_fmt string
     }
+
+    log.timezone = timezone
+    log.prepend_memory_usage = prepend_memory_usage
+    log.max_indents = max_indents
+    log.max_message_chars = max_message_chars
+    log.max_line_chars = max_line_chars
 
     log.print = print
 	
@@ -153,7 +159,7 @@ close_log :: proc(
 }
 
 print :: proc(
-	this:               ^Log,                // you can call print() via log.print("message") because 'this' is a pointer to the Log struct
+	log:                ^Log,                // you can call print() via log.print("message") because 'log' is a pointer to the Log struct
 	msg:                string,              // message to print
     i:                  int         = 0,     // number of indents to put in front of the string, defaults to 0
     ns:                 bool        = false, // print a new line in before the string, defaults to false
@@ -171,27 +177,27 @@ print :: proc(
     if !LOGGING_ENABLED do return
     
 	// lock mutex for thread safety, and defer unlock to the end of the procedure
-    sync.lock(&this.mutex)
-    defer sync.unlock(&this.mutex)
+    sync.lock(&log.mutex)
+    defer sync.unlock(&log.mutex)
 
     // Validate arguments
-	if this == nil {
+	if log == nil {
 		fmt.eprintln("ERROR: must pass a Log struct pointer")
         return "", "", false
 	}
 
     // Print to console
-	output_to_console: bool = (oc == nil) ? this.output_to_console : oc.(bool)
+	output_to_console: bool = (oc == nil) ? log.output_to_console : oc.(bool)
     console_str = ""
 	if output_to_console {
 
         // Move cursor up and clear previous string if user set overwrite_prev_msg to true
-        if overwrite_prev_msg && this.prev_console_message != "" {
-            console_clear_previous_message(this)
+        if overwrite_prev_msg && log.prev_console_message != "" {
+            console_clear_previous_message(log)
         }
 
 		// Format console string
-		console_str, ok = get_formatted_message(this, msg, this.console_indent, i, ns, ne, d, end)
+		console_str, ok = get_formatted_message(log, msg, log.console_indent, i, ns, ne, d, end)
 		if !ok {
 			fmt.eprintln("ERROR: failed to format console string")
             return "", "", false
@@ -202,7 +208,7 @@ print :: proc(
 	}
 
     // Print to log file
-	output_to_logfile: bool = (of == nil) ? this.output_to_logfile : of.(bool)
+	output_to_logfile: bool = (of == nil) ? log.output_to_logfile : of.(bool)
     logfile_str = ""
 	if output_to_logfile {
     }
@@ -236,29 +242,30 @@ get_formatted_message :: proc(
 ) {
 
     // Validate user input arguments
-	if num_indents < 0 || num_indents > log.max_indents {
-		fmt.eprintln("ERROR: num indents, i, must be between 0 and log.max_indents of %d (inclusive), or log.max_indents must be increased in its initialization", log.max_indents)
-		return "", false
-	}
+    if num_indents < 0 || num_indents > log.max_indents {
+        fmt.eprintln("ERROR: num indents, i, must be between 0 and log.max_indents of %d (inclusive), or log.max_indents must be increased in its initialization", log.max_indents)
+        return "", false
+    }
 
     // indent buffers
-	total_indent1: string = strings.repeat(indent, num_indents)
-	total_indent2: string = strings.repeat(indent, num_indents + 1)
-	total_indent3: string = draw ? total_indent2 : total_indent1
+    total_indent1: string = strings.repeat(indent, num_indents)
+    total_indent2: string = strings.repeat(indent, num_indents + 1)
+    total_indent3: string = draw ? total_indent2 : total_indent1
 
-	// Prepend info buffers and variables
-	formatted_message = "" // this will hold the final formatted message with prepended info and indents, ready to be printed to console or logfile
-	div_mark: rune = '-'
-	mock_indent: string = " "
-	p0: string = "" // p0 = mock indents (if info is prepended to each line, mock indents are tiny indents before the prepended info)
-	p: string = ""; // p = prepended info text
-	prepend_stuff: bool = log.prepend_datetime_fmt != "" || log.prepend_memory_usage
-	if prepend_stuff {
+    // Prepend info buffers and variables
+    sb := strings.builder_make()
+    defer strings.builder_destroy(&sb)
+    formatted_message = "" // this will hold the final formatted message with prepended info and indents, ready to be printed to console or logfile
+    div_mark: rune = '-'
+    mock_indent: string = " "
+    p0: string = "" // p0 = mock indents (if info is prepended to each line, mock indents are tiny indents before the prepended info)
+    p: string = ""; // p = prepended info text
+    prepend_stuff: bool = log.prepend_datetime_fmt != "" || log.prepend_memory_usage
+    if prepend_stuff {
 
-		// Prepend datetime in specified format
-		if log.prepend_datetime_fmt != "" {
-            datetime_str: string; ok: bool
-            datetime_str, ok = get_formatted_current_time(
+        // Prepend datetime in specified format
+        if log.prepend_datetime_fmt != "" {
+            datetime_str, ok := get_formatted_current_time(
                 log.timezone,
                 log.prepend_datetime_fmt
             )
@@ -266,29 +273,35 @@ get_formatted_message :: proc(
                 fmt.eprintln("ERROR: failed to get current time for prepending")
                 return "", false // TODO: set msg to error msg + msg
             }
-            fmt.println("datetime_str:", datetime_str)
-			// datetime_str, ok = current_time_formatted(log.timezone, log.prepend_datetime_fmt)
-            // // datetime_str, ok = current_time_formatted(log.timezone, log.prepend_datetime_fmt)
-			// if !ok {
-            //     fmt.eprintln("ERROR: failed to get current time for prepending")
-            //     return msg, false // TODO: set msg to error msg + msg
-			// }
-		}
+            // fmt.println("datetime_str:", datetime_str)
+            p = fmt.tprintf("%s  ", datetime_str) // fmt.tprintf uses the tmep allocator and can be used since p is local to this procedure
+        }
 
-		// // Prepend memory usage
-		// if log.prepend_memory_usage {
-		// 	// Example using global stats; you can implement a function to get actual memory usage if you want
-		// 	mem_usage_str := fmt.sprintf("%v", mem.Kilobyte * 1024) 
-		// 	if log.prepend_datetime_fmt != "" {
-		// 		p = fmt.sprintf("%s%c  %17s", p, div_mark, mem_usage_str)
-		// 	} else {
-		// 		p = fmt.sprintf("%17s", mem_usage_str)
-		// 	}
-		// }
+        // Prepend memory usage
+        if log.prepend_memory_usage {
+            // Example using global stats; you can implement a function to get actual memory usage if you want
+            mem_usage_str, ok := get_process_memory_usage()
+            // fmt.println("mem_usage_str:", mem_usage_str)
+            if log.prepend_datetime_fmt != "" {
+                p = fmt.tprintf("%s%c  ", p, div_mark)
+            }
+            p = fmt.tprintf("%s%17s", p, mem_usage_str)
+        }
 
-		// // fill p0 memory with mock indents + div_mark
-		// p0 = strings.repeat(mock_indent, num_indents) + fmt.sprintf("%c ", div_mark)
-	}
+        // fill p0 memory with mock indents + div_mark
+        p0 = fmt.tprintf("%s%r", strings.repeat(mock_indent, num_indents), div_mark)
+        // original python: p0 = mock_indent*i + div_mark
+        // original c:         p0_len += snprintf(
+            // p0 + p0_len,
+            // sizeof(p0) - p0_len,
+            // "%c ", div_mark);
+        // WHY IS THERE AN EXTRA SPACE IN THE ORIGINAL C CODE?
+
+
+        // original python: p = (' ' * (max_estimated_indents + 1 - len(mock_indent*i))) + p + f'{div_mark}  ' # put small 1-space-sized indents before everything so VS Code's code folding feature continues to work when there's prepended info such as memory or datetime
+    
+    }
+    // original python: blank_p = p0 + ' ' * (len(p) - (len(div_mark) + 2)) + f'{div_mark}  ' # blank_p = p but w/ prepend info removed, only marks remain
 
     return "", true
 
@@ -301,6 +314,7 @@ get_formatted_message :: proc(
 //             based on strftime. available formats: https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
 //
 // Returns: the formatted datetime string (or empty on error)
+@(private)
 get_formatted_current_time :: proc(
     timezone:    string,
     format:      string,
@@ -344,3 +358,37 @@ foreign current_time_formatted {
         format: cstring,
     )-> c.int ---
 }
+
+
+@(private)
+get_process_memory_usage :: proc() -> (string, bool) {
+    bytes, ok := get_os_specific_memory() // Compiler finds this in the suffixed files
+    if !ok do return "Memory read error  ", false
+
+    mem_str := get_memory_str(bytes)
+    return fmt.tprintf("%14s used  ", mem_str), true
+}
+
+@(private)
+get_memory_str :: proc(bytes: u64) -> string {
+	units     := [?]string{"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
+	b         := f64(bytes)
+	unit_idx  := 0
+
+	// Scale the value down
+	for b >= 1024 && unit_idx < len(units) - 1 {
+		b /= 1024.0
+		unit_idx += 1
+	}
+
+	if unit_idx == 0 {
+		if bytes == 1 {
+			return "1 byte"
+		}
+		return fmt.tprintf("%d bytes", bytes)
+	}
+
+	// %.4f matches your C snprintf precisely
+	return fmt.tprintf("%.4f %s", b, units[unit_idx])
+}
+

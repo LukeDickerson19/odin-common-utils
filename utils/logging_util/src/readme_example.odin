@@ -17,6 +17,7 @@ main :: proc() {
 		clear_old_log = true,
 		prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S.%f %Z",
 		timezone = "local",
+		prepend_memory_usage = true,
 	)
 	// close the log to free memory at the end of the scope
 	defer logging_util.close_log(logger)
