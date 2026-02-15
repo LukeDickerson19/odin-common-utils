@@ -1,27 +1,39 @@
 
-ToDo:
+To Do:
+
+    make ns and ne use '\n' instead of end
+
+    update print proc to return messages properly
+
+    make FMT macro odin equivalent
+
+    finish example tests
 
 
 Logging Util:
 
     Build:
-        build c code:
+        build c code (from project root dir):
             linux:
-                cd src/logging_util
-                gcc -c current_time_formatted.c
-                ar rcs current_time_formatted.a current_time_formatted.o
+                gcc -c src/current_time_formatted.c -o build/current_time_formatted.o
+                ar rcs build/current_time_formatted.a build/current_time_formatted.o
             windows:
                 cl -TC -c current_time_formatted.c
                 lib -nologo current_time_formatted.obj -out:current_time_formatted.lib
         build odin code:
-            cd .. # from (src/logging_util)
-            odin build .
+            linux:
+                odin build examples/test_all_features.odin -file -out:build/test_all_features
+                odin build examples/readme_example.odin -file -out:build/readme_example
+            windows:
+                tbd
     Run:
-        liux:
-            ./src
+        linux:
+            ./build/test_all_features
+        windows:
+            tbd
 
 
-Installed with:
+Odin Installed with:
     https://odin-lang.org/docs/install/#others-unix
         built from source
 

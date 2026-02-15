@@ -1,0 +1,21 @@
+
+test_print():
+a
+    b
+        c
+            d
+                e
+                    indented
+                    multi
+                    line
+                    string
+    
+    new line start = true, draw line = false
+        
+    new line start = true, draw line = true
+    new line start = false
+    new line end = true, draw line = false
+    
+    new line end = true, draw line = true
+        
+    new line end = false

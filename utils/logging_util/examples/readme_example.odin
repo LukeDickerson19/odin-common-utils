@@ -1,4 +1,4 @@
-package main
+package readme_example
 
 import "core:fmt"
 import "logging_util" // Assuming your logic is in a folder/package named logging
@@ -11,10 +11,10 @@ main :: proc() {
     // init any non default log settings
 	// see src/logging_util/logging_util.odin's Log struct for all settings
 	logger = logging_util.init_log(
-		filepath = "log.txt",
-		output_to_console = true,
 		output_to_logfile = true,
+		filepath = "log.txt",
 		clear_old_log = true,
+		output_to_console = true,
 		prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S.%f %Z",
 		timezone = "local",
 		prepend_memory_usage = true,
@@ -23,9 +23,9 @@ main :: proc() {
 	defer logging_util.close_log(logger)
 
     // log messages with different indent levels
-	logger->print("a", i=0)
-	logger->print("b", i=1)
-	logger->print("c", i=2)
+	logger->print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", i=0)
+	logger->print("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", i=1)
+	logger->print("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", i=2)
 	
 	// // 2. Multiline string
 	// logger.print("indented\nmulti\nline\nstring", {indent = 3})
