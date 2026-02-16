@@ -16,7 +16,9 @@ import "core:math"
 import "core:strconv" // used for high performance casting in get_process_memory_usage()
 import "core:slice"
 
+
 LOGGING_ENABLED :: true // toggle logging entirely
+
 
 Log :: struct {
 
@@ -53,13 +55,14 @@ Log :: struct {
         d:                  bool        = false, // draw a line on the blank line before or after the string, defaults to false
         overwrite_prev_msg: bool        = false, // overwrite previous printed message in console and logfile
         end:                string      = "\n",  // last character(s) to print at the end of the string, defaults to "\n"
+        console_msg:        ^string     = nil,   // pointer to string printed to console, so user can use console_msg outside log->print()
+        logfile_msg:        ^string     = nil,   // pointer to string printed to logfile, so user can use logfile_msg outside log->print()
     ) -> (
-        console_str: string, // pointer to string printed to console
-        logfile_str: string, // pointer to string printed to logfile
-        ok: bool,            // success flag
-    )
+        ok: bool,                                // success flag
+    ),
 
 }
+
 
 init_log :: proc(
     output_to_logfile:    bool      = true,
@@ -77,42 +80,42 @@ init_log :: proc(
 	max_line_chars:       u32       = 1000,
 ) -> ^Log {
 
-	// Init log struct
+    // Init log struct
     log := new(Log)
-	
+
     // map this log struct instance to the first arg of the print procedure so you can call it via log->print("message")
     // NOTE: removing this makes calling the procedures with "log->" cause a seg fault, thats why its before "if !LOGGING_ENABLED ..."
     log.print = print
-	
-	// Return early if logging is disable
-	if !LOGGING_ENABLED do return log;
 
-	// only allow output to logfile if a valid filepath is provided
-	// create logfile if it doesn't exist, and clear it if user specified to do so
-	if filepath != "" {
-		flags: os2.File_Flags = { .Write, .Create }
-		if clear_old_log do flags += { .Trunc }
-		else do flags += { .Append }
+    // Return early if logging is disable
+    if !LOGGING_ENABLED do return log;
+
+    // only allow output to logfile if a valid filepath is provided
+    // create logfile if it doesn't exist, and clear it if user specified to do so
+    if filepath != "" {
+        flags: os2.File_Flags = { .Write, .Create }
+        if clear_old_log do flags += { .Trunc }
+        else do flags += { .Append }
         // flags source: https://pkg.odin-lang.org/core/os/#File_Flag
         f, err := os2.open(filepath, flags, os2.Permissions_Default_File)
         // permissions source: https://pkg.odin-lang.org/core/os/#Permissions_Default_File
-		if err != os2.ERROR_NONE {
+        if err != os2.ERROR_NONE {
             // so just set output_to_logfile to false if file open fails to not crash the program
             fmt.eprintf("LOG ERROR: failed to create log file: %v\n", err)
-			log.output_to_logfile = false
+            log.output_to_logfile = false
             log.filepath = ""
             log.file = nil
-		} else {
+        } else {
             log.output_to_logfile = output_to_logfile
             log.filepath = filepath
             log.file = f
         }
     } else {
-		log.output_to_logfile = false
-	}
+        log.output_to_logfile = false
+    }
     log.logfile_indent = logfile_indent
 
-	// Map 0 to os2.stdout. Odin doesn't allow runtime-only values like os2.stdout as default paramater values
+    // Map 0 to os2.stdout. Odin doesn't allow runtime-only values like os2.stdout as default paramater values
     c: ^os2.File = console == {} ? os2.stdout : console
     if !slice.contains([]^os2.File{os2.stdout, os2.stderr}, c) {
         // Any other handle is considered invalid for the 'console'
@@ -154,6 +157,7 @@ init_log :: proc(
     return log
 }
 
+
 close_log :: proc(
 	log: ^Log
 ) {
@@ -165,10 +169,16 @@ close_log :: proc(
 	free(log)
 }
 
+f :: proc(
+    msg: string,    // message to format
+    fmt_args: ..any // string format variadic parameters https://odin-lang.org/docs/overview/#variadic-parameters
+) -> string {
+    return fmt.tprintf(msg, ..fmt_args)
+}
 
 print :: proc(
-	log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
-	msg:                string,              // message to print
+    log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
+    msg:                string,              // message to print 
     i:                  int         = 0,     // number of indents to put in front of the string, defaults to 0
     ns:                 bool        = false, // print a new line in before the string, defaults to false
     ne:                 bool        = false, // print a new line in after the string, defaults to false
@@ -177,12 +187,10 @@ print :: proc(
     d:                  bool        = false, // draw a line on the blank line before or after the string, defaults to false
     overwrite_prev_msg: bool        = false, // overwrite previous printed message in console and logfile
     end:                string      = "\n",  // last character(s) to print at the end of the string, defaults to "\n"
-) -> (
-    console_str: string, // pointer to string printed to console
-    logfile_str: string, // pointer to string printed to logfile
-    ok: bool,            // success flag
-) {
-    if !LOGGING_ENABLED do return
+    console_msg:        ^string     = nil,   // pointer to string printed to console, so user can use console_msg outside log->print()
+    logfile_msg:        ^string     = nil,   // pointer to string printed to logfile, so user can use logfile_msg outside log->print()
+) -> bool { // success flag
+    if !LOGGING_ENABLED do return true
     
     // lock mutex for thread safety, and defer unlock to the end of this procedure
     sync.lock(&log.mutex)
@@ -191,21 +199,22 @@ print :: proc(
     // Validate arguments
     if log == nil {
         fmt.eprintln("LOG ERROR: must pass a Log struct pointer")
-        return "", "", false
+        return false
     }
 
     // Get formatted string(s) for console and/or log file
     output_to_console: bool = (oc == nil) ? log.output_to_console : oc.(bool)
     output_to_logfile: bool = (of == nil) ? log.output_to_logfile : of.(bool)
-    console_str, logfile_str, ok = get_formatted_messages(
+
+    console_str, logfile_str, ok := get_formatted_messages(
         log, msg,
-        output_to_console,
-        output_to_logfile,
+        output_to_console || console_msg != nil, // create console output if its to be printed or returned
+        output_to_logfile || logfile_msg != nil, // create logfile output if its to be printed or returned
         i, ns, ne, d, end
     )
     if !ok {
         fmt.eprintln("LOG ERROR: failed to format message")
-        return "", "", false
+        return false
     }
 
     // Print to console
@@ -217,7 +226,6 @@ print :: proc(
         }
 
         // Print message to console
-        // fmt.fprint(log.console, console_str)
         os2.write_string(log.console, console_str)
         // fmt.fprint takes a file handle and variadic args, and prints them without appending a new line character
 
@@ -230,31 +238,32 @@ print :: proc(
     // Print to log file
     if output_to_logfile {
         bytes := transmute([]byte)logfile_str // strings are UTF-8 already -> zero-copy // TODO: i thought strings were made of runes which were not UTF-8? verify this
+
         if overwrite_prev_msg && log.logfile_last_offset != 0 {
 
             // Seek back to start of previous message
             if _, err := os2.seek(log.file, log.logfile_last_offset, io.Seek_From.Start); err != nil {
-                err_msg := fmt.tprintf("logfile overwrite seek failed: %v\n", err)
-                return console_str, err_msg, false
+                fmt.eprintf("LOG ERROR: logfile overwrite seek failed: %v\n", err)
+                return false
             }
 
             // Overwrite previous message with new message
             if _, err := os2.write(log.file, bytes); err != nil {
-                err_msg := fmt.tprintf("logfile overwrite write failed: %v\n", err)
-                return console_str, err_msg, false
+                fmt.eprintf("LOG ERROR: logfile overwrite write failed: %v\n", err)
+                return false
             }
 
             // Truncate file to end of new message (discards anything beyond)
             new_end := log.logfile_last_offset + i64(len(bytes))
             if err := os2.truncate(log.file, new_end); err != nil {
-                err_msg := fmt.tprintf("logfile overwrite truncate failed: %v\n", err)
-                return console_str, err_msg, false
+                fmt.eprintf("LOG ERROR: logfile overwrite truncate failed: %v\n", err)
+                return false
             }
 
             // Force any data sitting in your program's internal output buffer to be sent to the underlying file (or device) immediately, instead of waiting for the buffer to fill up naturally.
             if err := os2.flush(log.file); err != nil {
-                err_msg := fmt.tprintf("logfile overwrite flush failed: %v\n", err)
-                return console_str, err_msg, false
+                fmt.eprintf("LOG ERROR: logfile overwrite flush failed: %v\n", err)
+                return false
             }
 
         } else {
@@ -262,22 +271,27 @@ print :: proc(
             // Normal append mode
             offset, err := os2.seek(log.file, 0, io.Seek_From.Current)
             if err != nil {
-                err_msg := fmt.tprintf("logfile append seek failed: %v\n", err)
-                return console_str, err_msg, false
+                fmt.eprintf("LOG ERROR: logfile append seek failed: %v\n", err)
+                return false
             }
             if _, err := os2.write(log.file, bytes); err != nil {
-                err_msg := fmt.tprintf("logfile append write failed: %v\n", err)
-                return console_str, err_msg, false
+                fmt.eprintf("LOG ERROR: logfile append write failed: %v\n", err)
+                return false
             }
             if err := os2.flush(log.file); err != nil {
-                err_msg := fmt.tprintf("logfile append flush failed: %v\n", err)
-                return console_str, err_msg, false
+                fmt.eprintf("LOG ERROR: logfile append flush failed: %v\n", err)
+                return false
             }
             log.logfile_last_offset = offset
         }
     }
 
-    return console_str, logfile_str, true
+    // free message strings if user did not pass pointer(s)
+    // to capture one or both of them
+    if console_msg != nil do console_msg^ = console_str; else do delete(console_str)
+    if logfile_msg != nil do logfile_msg^ = logfile_str; else do delete(logfile_str)
+
+    return true
 }
 
 
@@ -294,15 +308,15 @@ console_clear_previous_message :: proc(log: ^Log) {
 
 @(private)
 get_formatted_messages :: proc(
-    log:               ^Log,
-    msg:               string,
-    output_to_console: bool,
-    output_to_logfile: bool,
-    num_indents:       int,
-    newline_start:     bool,
-    newline_end:       bool,
-    draw:              bool,
-    end:               string,
+    log:                   ^Log,
+    msg:                   string,
+    create_console_output: bool,
+    create_logfile_output: bool,
+    num_indents:           int,
+    newline_start:         bool,
+    newline_end:           bool,
+    draw:                  bool,
+    end:                   string,
 ) -> (
     formatted_console_msg: string, // pointer to string printed to console
     formatted_logfile_msg: string, // pointer to string printed to console
@@ -370,7 +384,7 @@ get_formatted_messages :: proc(
     blank_info := strings.repeat(" ",
         (prepend_stuff ? strings.builder_len(p) - 3 : 0),
         context.temp_allocator)
-    blank_p := fmt.tprintf("%s%r%s%c  ", strings.to_string(p0), div_mark, blank_info, div_mark)
+    blank_p := fmt.tprintf("%s%r%s%r  ", strings.to_string(p0), div_mark, blank_info, div_mark)
     // fmt.tprintf uses the temp allocator and can be used since p is local to this procedure
     // source: https://pkg.odin-lang.org/core/fmt/#tprintf
     
@@ -381,8 +395,8 @@ get_formatted_messages :: proc(
         create_output: bool,
     }
     targets := [2]Output_Target {
-        { "console", log.console_indent, output_to_console },
-        { "logfile", log.logfile_indent, output_to_logfile },
+        { "console", log.console_indent, create_console_output },
+        { "logfile", log.logfile_indent, create_logfile_output },
     }
     formatted_console_msg = "" // default - empty string if output_to_console = false
     formatted_logfile_msg = "" // default - empty string if output_to_logfile = false
@@ -400,7 +414,7 @@ get_formatted_messages :: proc(
         if newline_start {
             if prepend_stuff do strings.write_string(&fm, blank_p)
             strings.write_string(&fm, total_indent3)
-            strings.write_string(&fm, end)
+            strings.write_rune(&fm, '\n')
         }
 
         lines := strings.split(msg, "\n", context.temp_allocator)
@@ -423,7 +437,7 @@ get_formatted_messages :: proc(
         if newline_end {
             if prepend_stuff do strings.write_string(&fm, blank_p)
             strings.write_string(&fm, total_indent3)
-            strings.write_string(&fm, end)
+            strings.write_rune(&fm, '\n')
         }
 
         switch target.location {

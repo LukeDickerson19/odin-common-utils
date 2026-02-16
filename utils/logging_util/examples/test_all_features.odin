@@ -2,14 +2,15 @@ package test_all_features
 
 import "core:fmt"
 import "core:time"
-import "core:os"
+import "core:os/os2"
+import "base:runtime"
 import "core:path/filepath"
-
+import "core:encoding/json"
 import logging_util "../src"
-
 
 // global variable so you don't need to pass it to each function using it
 log: ^logging_util.Log
+f := logging_util.f // convenience proc for string formatting
 
 // Build path relative to executable or working directory
 project_root_dir: string
@@ -30,16 +31,23 @@ main :: proc() {
     // close the log to free memory at the end of the scope
     defer logging_util.close_log(log)
 
-    test_print();
-    // test_print_json();
+    // test_print();
+    test_print_json();
     // test_overwrite_prev_msg();
 
 }
 
 set_project_root_dir :: proc() {
-    exe_path := os.args[0]  // First arg is executable path
-    exe_dir := filepath.dir(exe_path)
+    exe_path, err := os2.get_executable_path(runtime.heap_allocator())
+    if err != os2.ERROR_NONE {
+        fmt.eprintf("Failed to get exe path: %v\n", err)
+        return
+    }
+    exe_path = filepath.clean(exe_path)
+    exe_dir  := filepath.dir(exe_path)
     project_root_dir = filepath.dir(exe_dir)
+    // fmt.printf("exe_path:         %s\n", exe_path)
+    // fmt.printf("exe_dir:          %s\n", exe_dir)
     fmt.printf("project_root_dir: %s\n", project_root_dir)
 }
 
@@ -54,6 +62,9 @@ test_print :: proc() {
     log->print("e", i=4)
     log->print("indented\nmulti\nline\nstring", i=5)
 
+    // test formatted string
+    log->print(f("formatted string: %d %r %s", 7, 'f', "hellooo"), i=1);
+
     // test new line start
     log->print("new line start = true, draw line = false", i=1, ns=true)
     log->print("new line start = true, draw line = true", i=1, ns=true, d=true)
@@ -64,18 +75,18 @@ test_print :: proc() {
     log->print("new line end = true, draw line = true", i=1, ne=true, d=true)
     log->print("new line end = false", i=1, ne=false)
 
-    // // test return values
-    // console_str, logfile_str: string
-    // log->print("test print return value", i=2, console_str=&console_str, logfile_str=&logfile_str, oc=false, of=false);
-    // fmt.println(console_str); // if theres indents, it was preserved
-    // fmt.println(logfile_str);
-    // free(console_str);
-    // free(logfile_str);
-    // log->print("test multiline\nprint return\nvalue", i=3, console_str=&console_str, logfile_str=&logfile_str, oc=false, of=false);
-    // fmt.println(console_str); // if theres indents, it was preserved
-    // fmt.println(logfile_str);
-    // free(console_str);
-    // free(logfile_str);
+    // test return values
+    console_msg, logfile_msg: string
+    log->print("test print return value", i=2, console_msg=&console_msg, logfile_msg=&logfile_msg, oc=false, of=false)
+    fmt.print(console_msg); // if theres indents, it was preserved
+    fmt.print(logfile_msg);
+    delete(console_msg);
+    delete(logfile_msg);
+    log->print("test multiline\nprint return\nvalue", i=3, console_msg=&console_msg, logfile_msg=&logfile_msg, oc=false, of=false);
+    fmt.print(console_msg); // if theres indents, it was preserved
+    fmt.print(logfile_msg);
+    delete(console_msg);
+    delete(logfile_msg);
 
     // test prepend datetime
     log2 := logging_util.init_log(
@@ -114,7 +125,75 @@ test_print :: proc() {
 }
 
 test_print_json :: proc() {
+    log->print("\ntest_print_json():")
+
+    // Create example struct instance
+    Person :: struct {
+        name:   string,
+        age:    int,
+        emails: []string,
+    }
+    p := Person{
+        name = "Luke",
+        age = 32,
+        emails = {"luke@example.com", "luke123@gmail.com"},
+    }
+
+    // Convert struct to JSON string
+    // sources:
+    // https://pkg.odin-lang.org/core/encoding/json/#marshal
+    // https://pkg.odin-lang.org/core/encoding/json/#Marshal_Options
+    json_bytes, err := json.marshal(p, { pretty=true, use_spaces=true, spaces=4 })
+    if err != nil {
+        fmt.eprintf("Failed to marshal (aka convert) JSON to string: %v\n", err)
+        return
+    }
+    json_str := string(json_bytes)
+
+    // log it
+    log->print("created json string:", i=1)
+    log->print(json_str, i=2)
+
+    // create json file
+    json_filepath := filepath.join({ project_root_dir, "examples", "example.json" })
+    flags: os2.File_Flags = { .Write, .Create, .Trunc }
+    // flags source: https://pkg.odin-lang.org/core/os/#File_Flag
+    f, e := os2.open(json_filepath, flags, os2.Permissions_Default_File)
+    // permissions source: https://pkg.odin-lang.org/core/os/#Permissions_Default_File
+    if e != nil {
+        fmt.eprintf("Failed to create json file: %v\n", e)
+        return
+    }
     
+    // write to json file
+    _, e = os2.write_string(f, json_str)
+    if e != nil {
+        fmt.eprintf("Failed to write to json file: %v\n", e)
+        return
+    }
+
+    // Clean up heap-allocated bytes
+    delete(json_bytes)
+
+    // read from json file
+    f2, e2 := os2.open(json_filepath, { .Read }, os2.Permissions_Default_File)
+    if e2 != nil {
+        fmt.eprintf("Failed to open json file in read mode: %v\n", e)
+        return
+    }
+    json_bytes2: []u8
+    _, e2 = os2.read(f2, json_bytes)
+    if e2 != nil {
+        fmt.eprintf("Failed to read from json file: %v\n", e)
+        return
+    }
+    json_str2 := string(json_bytes)
+
+    // log it again
+    log->print("wrote json string to file, deleted it, and read it back in:", i=1)
+    log->print(json_str2, i=2)
+    delete(json_bytes2)
+
 }
 
 test_overwrite_prev_msg :: proc() {
@@ -123,12 +202,6 @@ test_overwrite_prev_msg :: proc() {
 
 
 /*
-
-def test_print_dct():
-	log.print('\ntest_print_dct():')
-	dct0 = {'a' : 1, 'b' : 2, 'c' : 3}
-	log.print_dct(dct0, i=1, ne=true)
-
 
 def test_overwrite_prev_print():
 	log.print('\ntest_overwrite_prev_print():')

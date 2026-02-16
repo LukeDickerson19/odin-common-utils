@@ -1,0 +1,8 @@
+{
+    "name": "Luke",
+    "age": 32,
+    "emails": [
+        "luke@example.com",
+        "luke123@gmail.com"
+    ]
+}

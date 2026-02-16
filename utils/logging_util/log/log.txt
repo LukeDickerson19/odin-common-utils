@@ -1,21 +1,20 @@
 
-test_print():
-a
-    b
-        c
-            d
-                e
-                    indented
-                    multi
-                    line
-                    string
-    
-    new line start = true, draw line = false
-        
-    new line start = true, draw line = true
-    new line start = false
-    new line end = true, draw line = false
-    
-    new line end = true, draw line = true
-        
-    new line end = false
+test_print_json():
+    created json string:
+        {
+            "name": "Luke",
+            "age": 32,
+            "emails": [
+                "luke@example.com",
+                "luke123@gmail.com"
+            ]
+        }
+    wrote json string to file, deleted it, and read it back in:
+        {
+            "name": "Luke",
+            "age": 32,
+            "emails": [
+                "luke@example.com",
+                "luke123@gmail.com"
+            ]
+        }

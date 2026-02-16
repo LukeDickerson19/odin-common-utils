@@ -1,13 +1,10 @@
 
 To Do:
 
-    make ns and ne use '\n' instead of end
-
-    update print proc to return messages properly
-
-    make FMT macro odin equivalent
-
     finish example tests
+        next do overwrite_prev_msg
+
+    test cross platform
 
 
 Logging Util:

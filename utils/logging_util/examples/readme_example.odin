@@ -1,7 +1,7 @@
 package readme_example
 
 import "core:fmt"
-import "logging_util" // Assuming your logic is in a folder/package named logging
+import logging_util "../src"
 
 // global variable so you don't need to pass it to each function using it
 logger: ^logging_util.Log
