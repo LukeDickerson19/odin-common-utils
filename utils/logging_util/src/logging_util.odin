@@ -17,10 +17,12 @@ import "core:strconv" // used for high performance casting in get_process_memory
 import "core:slice"
 
 
-LOGGING_ENABLED :: true // toggle logging entirely
-
 
 Log :: struct {
+
+    /////////////////////////////////////// Struct Members ///////////////////////////////////////
+
+    enabled:               bool,         // toggle logging entirely
 
     output_to_logfile:     bool,         // flag to print to the log file or not
     filepath:              string,       // path to the log file
@@ -34,7 +36,7 @@ Log :: struct {
     prepend_datetime_fmt:  string,       // format specifying datetime to prepend to each line printed
     timezone:              string,       // timezone to use if prepend_datetime_fmt is not an empty string
     prepend_memory_usage:  bool,         // prepend the memory used and allocated to the program using the logging util
-    max_indents:           int,          // max number of indents the user can indent a log message
+    max_indents:           u8,           // max number of indents the user can indent a log message // NOTE: max_indents effects mini indents when prepending time or memory info, keep it as small as you think the max number of indents you the user will use.
     max_message_chars:     u32,          // max number of characters per message, tested w/ value: 500
     max_line_chars:        u32,          // max number of characters per line (must be less than MAX_MESSAGE_CHARS), tested w/ value: 150
 
@@ -43,11 +45,15 @@ Log :: struct {
 
     mutex:                 sync.Mutex,   // thread safety mutex
 
-    // pointer to print procedure
+    /////////////////////// Procedure Pointers (aka OOP class functions) //////////////////////////
+
+    // NOTE: all procedures must also be declared or defined in init(), or in general upon struct creation
+
+    // main print() procedure
     print: proc(
         log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
         msg:                string,              // message to print
-        i:                  int         = 0,     // number of indents to put in front of the string, defaults to 0
+        i:                  u8          = 0,     // number of indents to put in front of the string, defaults to 0
         ns:                 bool        = false, // print a new line in before the string, defaults to false
         ne:                 bool        = false, // print a new line in after the string, defaults to false
         oc:                 Maybe(bool) = nil,   // output to console, defaults to nil, which uses the Log struct's output_to_console bool
@@ -61,10 +67,21 @@ Log :: struct {
         ok: bool,                                // success flag
     ),
 
+    // set/update prepend_datetime_fmt for future log messages to be printed
+    set_prepend_datetime_fmt: proc(log: ^Log, new_prepend_datetime_fmt: string),
+
+    // set/update timezone for future log messages to be printed
+    set_timezone: proc(log: ^Log, new_timezone: string),
+
+    // test: proc(log: ^Log) // see example of declaring a procedure inside init()
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    
 }
 
 
-init_log :: proc(
+init :: proc(
+    enabled:              bool      = true,
     output_to_logfile:    bool      = true,
     filepath:             string    = "",
     clear_old_log:        bool      = true, // flag to clear the log file or not
@@ -75,7 +92,7 @@ init_log :: proc(
     prepend_datetime_fmt: string    = "",
 	timezone:             string    = "UTC",
     prepend_memory_usage: bool      = false,
-	max_indents:          int       = 10,
+	max_indents:          u8        = 10,
 	max_message_chars:    u32       = 10000,
 	max_line_chars:       u32       = 1000,
 ) -> ^Log {
@@ -83,14 +100,24 @@ init_log :: proc(
     // Init log struct
     log := new(Log)
 
-    // map this log struct instance to the first arg of the print procedure so you can call it via log->print("message")
-    // NOTE: removing this makes calling the procedures with "log->" cause a seg fault, thats why its before "if !LOGGING_ENABLED ..."
+    // map all public procedures of this log struct instance to the log arg of init() so you can call them via "->" syntax, example: "log->print("message")"
+    // NOTE: removing these mappings makes calling the procedures with "log->" cause a seg fault, thats why its before "if !log.enabled ..."
     log.print = print
+    log.set_prepend_datetime_fmt = set_prepend_datetime_fmt
+    log.set_timezone = set_timezone
+    // // example of declaring a procedure inside init()
+    // log.test = proc(log: ^Log) {
+    //     fmt.println("test")
+    // }
+    // log->test()
 
     // Return early if logging is disable
-    if !LOGGING_ENABLED do return log;
+    log.enabled = enabled
+    if !log.enabled do return log;
 
-    // only allow output to logfile if a valid filepath is provided
+    // Init all struct members:
+
+    // Only allow output to logfile if a valid filepath is provided
     // create logfile if it doesn't exist, and clear it if user specified to do so
     if filepath != "" {
         flags: os2.File_Flags = { .Write, .Create }
@@ -129,28 +156,16 @@ init_log :: proc(
     }
     log.console_indent = console_indent
 
-    // fix weird timezone bug in C:
-    // replace "%Z" with hardcoded "UTC" if
-    // "%Z" substring in prepend_datetime_fmt and timezone = "UTC"
-    log.prepend_datetime_fmt = strings.clone(prepend_datetime_fmt) // clone prepend_datetime_fmt so the Log owns it
-    if strings.contains(log.prepend_datetime_fmt, "%Z") && log.timezone == "UTC" {
-        new_fmt: string; was_allocation: bool
-        new_fmt, was_allocation = strings.replace_all(log.prepend_datetime_fmt, "%Z", "UTC")
-        // https://pkg.odin-lang.org/core/strings/#replace_all
-        // https://pkg.odin-lang.org/core/strings/#replace <-- more info in docs for replace
-        delete(log.prepend_datetime_fmt) // free the previous version
-        log.prepend_datetime_fmt = strings.clone(new_fmt) // clone the new version
-        if was_allocation do delete(new_fmt) // delete the new_fmt string
-    }
-    log.timezone = timezone
+    // Set prepend_datetime_fmt, timezone, and memory usage
+    set_prepend_datetime_fmt_and_timezone(log, prepend_datetime_fmt, timezone)
     log.prepend_memory_usage = prepend_memory_usage
 
-    // set message length maximums
+    // Set message length maximums
     log.max_indents = max_indents
     log.max_message_chars = max_message_chars
     log.max_line_chars = max_line_chars
 
-    // init variables used for print() arg overwrite_prev_msg
+    // Init variables used for print() arg overwrite_prev_msg
     log.prev_console_message = ""
     log.logfile_last_offset = 0
 
@@ -158,10 +173,32 @@ init_log :: proc(
 }
 
 
-close_log :: proc(
-	log: ^Log
+close :: proc(
+	log: ^Log,
+    verbose: bool = false,
+    i:                  u8          = 0,
+    ns:                 bool        = false,
+    ne:                 bool        = false,
+    oc:                 Maybe(bool) = nil,
+    of:                 Maybe(bool) = nil,
+    d:                  bool        = false,
+    overwrite_prev_msg: bool        = false,
+    end:                string      = "\n",
+    console_msg:        ^string     = nil,
+    logfile_msg:        ^string     = nil,
 ) {
-	if log == nil do return
+	if log == nil {
+        fmt.println("No log to close, log == nil")   
+        return
+    }
+    if verbose {
+        log->print(
+            f("closing log:\n%s", log.filepath),
+            i=i, ns=ns, ne=ne, oc=oc, of=of, d=d,
+            overwrite_prev_msg=overwrite_prev_msg, end=end,
+            console_msg=console_msg, logfile_msg=logfile_msg,
+        )
+    }
     blacklist := []^os2.File{nil, os2.stdout, os2.stderr} // don't close these files
     if !slice.contains(blacklist, log.file) do os2.close(log.file)
     delete(log.prepend_datetime_fmt)
@@ -169,17 +206,11 @@ close_log :: proc(
 	free(log)
 }
 
-f :: proc(
-    msg: string,    // message to format
-    fmt_args: ..any // string format variadic parameters https://odin-lang.org/docs/overview/#variadic-parameters
-) -> string {
-    return fmt.tprintf(msg, ..fmt_args)
-}
 
 print :: proc(
     log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
     msg:                string,              // message to print 
-    i:                  int         = 0,     // number of indents to put in front of the string, defaults to 0
+    i:                  u8          = 0,     // number of indents to put in front of the string, defaults to 0
     ns:                 bool        = false, // print a new line in before the string, defaults to false
     ne:                 bool        = false, // print a new line in after the string, defaults to false
     oc:                 Maybe(bool) = nil,   // output to console, defaults to nil, which uses the Log struct's output_to_console bool
@@ -190,7 +221,7 @@ print :: proc(
     console_msg:        ^string     = nil,   // pointer to string printed to console, so user can use console_msg outside log->print()
     logfile_msg:        ^string     = nil,   // pointer to string printed to logfile, so user can use logfile_msg outside log->print()
 ) -> bool { // success flag
-    if !LOGGING_ENABLED do return true
+    if !log.enabled do return true
     
     // lock mutex for thread safety, and defer unlock to the end of this procedure
     sync.lock(&log.mutex)
@@ -295,6 +326,14 @@ print :: proc(
 }
 
 
+f :: proc(
+    msg: string,    // message to format
+    fmt_args: ..any // string format variadic parameters https://odin-lang.org/docs/overview/#variadic-parameters
+) -> string {
+    return fmt.tprintf(msg, ..fmt_args)
+}
+
+
 @(private)
 console_clear_previous_message :: proc(log: ^Log) {
     line_count := strings.count(log.prev_console_message, "\n")
@@ -312,7 +351,7 @@ get_formatted_messages :: proc(
     msg:                   string,
     create_console_output: bool,
     create_logfile_output: bool,
-    num_indents:           int,
+    num_indents:           u8,
     newline_start:         bool,
     newline_end:           bool,
     draw:                  bool,
@@ -407,8 +446,8 @@ get_formatted_messages :: proc(
         fm: strings.Builder // formatted message
         strings.builder_init(&fm, context.temp_allocator)
         defer strings.builder_destroy(&fm)
-        total_indent1 = strings.repeat(target.indent, num_indents)
-        total_indent2 = strings.repeat(target.indent, num_indents + 1)
+        total_indent1 = strings.repeat(target.indent, int(num_indents))
+        total_indent2 = strings.repeat(target.indent, int(num_indents) + 1)
         total_indent3 = draw ? total_indent2 : total_indent1
 
         if newline_start {
@@ -451,6 +490,7 @@ get_formatted_messages :: proc(
     return formatted_console_msg, formatted_logfile_msg, true
 }
 
+
 // get_formatted_current_time returns the current datetime as a formatted string
 //
 // - timezone: "local" or "UTC", defaults to UTC
@@ -491,9 +531,9 @@ get_formatted_current_time :: proc(
     return string(datetime_cstr), true
 }
 // used a c binding for get_formatted_current_time() because I failed to get the local time in odin, only UTC. Also setting the timezone seems to require the UTC offset, which gets complicated because of daylights saving time. Also I couldn't find a way to format it via a user provided format string. see odin time package docs: https://pkg.odin-lang.org/core/time
-when ODIN_OS == .Windows do foreign import current_time_formatted "../build/current_time_formatted.lib"
-when ODIN_OS == .Linux   do foreign import current_time_formatted "../build/current_time_formatted.a"
-when ODIN_OS == .Darwin  do foreign import current_time_formatted "../build/current_time_formatted.a"
+when ODIN_OS == .Windows do foreign import current_time_formatted "./current_time_formatted.lib" // path relative to this files parent dir
+when ODIN_OS == .Linux   do foreign import current_time_formatted "./current_time_formatted.a"
+when ODIN_OS == .Darwin  do foreign import current_time_formatted "./current_time_formatted.a"
 // binding odin to c: https://odin-lang.org/news/binding-to-c/
 foreign current_time_formatted {
     get_current_time :: proc(
@@ -504,6 +544,7 @@ foreign current_time_formatted {
     )-> c.int ---
 }
 
+
 @(private)
 get_process_memory_usage :: proc() -> (string, bool) {
     bytes, ok := get_os_specific_memory() // Compiler finds this in the suffixed files
@@ -512,6 +553,7 @@ get_process_memory_usage :: proc() -> (string, bool) {
     mem_str := get_memory_str(bytes)
     return fmt.tprintf("%14s used  ", mem_str), true
 }
+
 
 @(private)
 get_memory_str :: proc(bytes: u64) -> string {
@@ -535,4 +577,64 @@ get_memory_str :: proc(bytes: u64) -> string {
     // %.4f matches your C snprintf precisely
     return fmt.tprintf("%.4f %s", b, units[unit_idx])
 }
+
+
+set_prepend_datetime_fmt :: proc(
+    log: ^Log,
+    new_prepend_datetime_fmt: string,
+) {
+    set_prepend_datetime_fmt_and_timezone(
+        log,
+        new_prepend_datetime_fmt,
+        log.timezone
+    )
+}
+
+
+set_timezone :: proc(
+    log: ^Log,
+    new_timezone: string,
+) {
+    set_prepend_datetime_fmt_and_timezone(
+        log,
+        log.prepend_datetime_fmt,
+        new_timezone
+    )
+}
+
+
+@(private)
+set_prepend_datetime_fmt_and_timezone :: proc(
+    log: ^Log,
+    new_prepend_datetime_fmt: string,
+    new_timezone: string,
+) {
+    // fix weird timezone bug in C:
+    // replace "%Z" with hardcoded "UTC" if
+    // "%Z" substring in prepend_datetime_fmt and timezone = "UTC"
+
+    // Set/update timezone
+    log.timezone = new_timezone
+
+    // Remember old value so we can delete it safely later
+    old_fmt := log.prepend_datetime_fmt
+    defer delete(old_fmt)
+
+    // Handle %Z -> "UTC" replacement
+    if strings.contains(new_prepend_datetime_fmt, "%Z") && log.timezone == "UTC" {
+        new_fmt, allocated := strings.replace_all(new_prepend_datetime_fmt, "%Z", "UTC")
+        // https://pkg.odin-lang.org/core/strings/#replace_all
+        // https://pkg.odin-lang.org/core/strings/#replace <-- more info in docs for replace
+
+        // Set the final version (new_fmt owns the memory if allocated)
+        if allocated {
+            log.prepend_datetime_fmt = new_fmt
+        } else {
+            log.prepend_datetime_fmt = strings.clone(new_fmt)
+        }
+    } else {
+        log.prepend_datetime_fmt = strings.clone(new_prepend_datetime_fmt)
+    }
+}
+
 

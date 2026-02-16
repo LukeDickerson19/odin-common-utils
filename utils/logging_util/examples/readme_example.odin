@@ -10,9 +10,9 @@ main :: proc() {
 
     // init any non default log settings
 	// see src/logging_util/logging_util.odin's Log struct for all settings
-	logger = logging_util.init_log(
+	logger = logging_util.init(
 		output_to_logfile = true,
-		filepath = "log.txt",
+		filepath = "readme_example_log.txt",
 		clear_old_log = true,
 		output_to_console = true,
 		prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S.%f %Z",
@@ -20,7 +20,7 @@ main :: proc() {
 		prepend_memory_usage = true,
 	)
 	// close the log to free memory at the end of the scope
-	defer logging_util.close_log(logger)
+	defer logging_util.close(logger)
 
     // log messages with different indent levels
 	logger->print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", i=0)

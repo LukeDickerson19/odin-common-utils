@@ -1,8 +1,9 @@
 {
-    "name": "Luke",
-    "age": 32,
+    "username": "Username1234",
+    "settings_theme": "dark",
+    "send_email_notifications": true,
     "emails": [
-        "luke@example.com",
-        "luke123@gmail.com"
+        "first.last@gmail.com",
+        "embarrasing.highschool.email.address@yahoo.com"
     ]
 }

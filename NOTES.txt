@@ -1,34 +1,4 @@
 
-To Do:
-
-    finish example tests
-        next do overwrite_prev_msg
-
-    test cross platform
-
-
-Logging Util:
-
-    Build:
-        build c code (from project root dir):
-            linux:
-                gcc -c src/current_time_formatted.c -o build/current_time_formatted.o
-                ar rcs build/current_time_formatted.a build/current_time_formatted.o
-            windows:
-                cl -TC -c current_time_formatted.c
-                lib -nologo current_time_formatted.obj -out:current_time_formatted.lib
-        build odin code:
-            linux:
-                odin build examples/test_all_features.odin -file -out:build/test_all_features
-                odin build examples/readme_example.odin -file -out:build/readme_example
-            windows:
-                tbd
-    Run:
-        linux:
-            ./build/test_all_features
-        windows:
-            tbd
-
 
 Odin Installed with:
     https://odin-lang.org/docs/install/#others-unix
@@ -36,6 +6,7 @@ Odin Installed with:
 
     location:
     /usr/local/Odin
+
 
 Usage:
 
@@ -46,3 +17,68 @@ Usage:
     source:
         https://odin-lang.org/docs/overview/
         
+
+Logging Util:
+
+    Build:
+
+        # NOTE: only use the below commands (faster compiling) for development. Use the commands in the build scripts for releasing production executables with performance optimizations turned on (and slower compiling).
+
+        build c code (from project root dir):
+            linux:
+                gcc -c src/current_time_formatted.c -o src/current_time_formatted.o
+                ar rcs src/current_time_formatted.a src/current_time_formatted.o
+            windows:
+                TODO: TO BE TESTED:
+                    cl -TC -c current_time_formatted.c
+                    lib -nologo current_time_formatted.obj -out:current_time_formatted.lib
+
+        build odin code:
+            # NOTE: building all files at once would require making them an odin collection cause each test/example has its own main function
+            linux:
+                odin build examples/readme_example.odin -file -out:build/readme_example
+                odin build examples/full_example.odin -file -out:build/full_example
+            windows:
+                tbd
+
+    Run:
+        linux:
+            ./build/full_example # run from project root dir
+            cd log; ./../build/readme_example # cd into log dir b/c readme_example creates log.txt in the current working directory the executable is run from
+        windows:
+            tbd
+
+    To Do:
+
+        move odin code into src/odin/ and c code into src/c/
+
+        create feature to display program start time start time
+            string arg: "current datetime", "program duration"
+
+            update the c function for this
+                maybe update c logging util too?
+
+            once this is done, update the thread safety test to use it instead of regualar time
+                maybe reset log_init_time?
+                log.init_time = // unix time
+
+        finish example tests
+            thread safety test
+
+        test cross platform
+
+    Backlog:
+
+        maybe experiment with updating print() to take a struct PrintOptionalArgs
+            and pass it to:
+                print(),
+                close(),
+                init(),
+                    and give init a verbose bool arg like close and say "Init log at <current_time>\n%s" log.filepath"
+                    and call verbose_init in full_example.odin
+                    and change close()'s verbose arg to verbose_close
+                and the data given to Thread_Data in full_example.odin
+
+            hopefully print() calls will look something like
+                print("message", { .i=1, ... })
+
