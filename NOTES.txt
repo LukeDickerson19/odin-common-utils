@@ -26,12 +26,12 @@ Logging Util:
 
         build c code (from project root dir):
             linux:
-                gcc -c src/current_time_formatted.c -o src/current_time_formatted.o
-                ar rcs src/current_time_formatted.a src/current_time_formatted.o
+                gcc -c src/c/current_time_info.c -o src/c/current_time_info.o
+                ar rcs src/c/current_time_info.a src/c/current_time_info.o
             windows:
                 TODO: TO BE TESTED:
-                    cl -TC -c current_time_formatted.c
-                    lib -nologo current_time_formatted.obj -out:current_time_formatted.lib
+                    cl -TC -c src\c\current_time_info.c
+                    lib -nologo src\c\current_time_info.obj -out:src\c\current_time_info.lib
 
         build odin code:
             # NOTE: building all files at once would require making them an odin collection cause each test/example has its own main function
@@ -49,21 +49,6 @@ Logging Util:
             tbd
 
     To Do:
-
-        move odin code into src/odin/ and c code into src/c/
-
-        create feature to display program start time start time
-            string arg: "current datetime", "program duration"
-
-            update the c function for this
-                maybe update c logging util too?
-
-            once this is done, update the thread safety test to use it instead of regualar time
-                maybe reset log_init_time?
-                log.init_time = // unix time
-
-        finish example tests
-            thread safety test
 
         test cross platform
 

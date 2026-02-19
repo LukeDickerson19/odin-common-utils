@@ -22,28 +22,31 @@ Log :: struct {
 
     /////////////////////////////////////// Struct Members ///////////////////////////////////////
 
-    enabled:               bool,         // toggle logging entirely
+    enabled:                 bool,       // toggle logging entirely
 
-    output_to_logfile:     bool,         // flag to print to the log file or not
-    filepath:              string,       // path to the log file
-    file:                  ^os2.File,    // pointer logfile os2.File struct
-    logfile_indent:        string,       // what an indent looks like in the log file
+    output_to_logfile:       bool,       // flag to print to the log file or not
+    filepath:                string,     // path to the log file
+    file:                    ^os2.File,  // pointer logfile os2.File struct
+    logfile_indent:          string,     // what an indent looks like in the log file
 
-    output_to_console:     bool,         // flag to print to the console or not
-    console:               ^os2.File,    // pointer console os2.File struct (e.g., stdout, stderr)
-    console_indent:        string,       // what an indent looks like in the console
+    output_to_console:       bool,       // flag to print to the console or not
+    console:                 ^os2.File,  // pointer console os2.File struct (e.g., stdout, stderr)
+    console_indent:          string,     // what an indent looks like in the console
 
-    prepend_datetime_fmt:  string,       // format specifying datetime to prepend to each line printed
-    timezone:              string,       // timezone to use if prepend_datetime_fmt is not an empty string
-    prepend_memory_usage:  bool,         // prepend the memory used and allocated to the program using the logging util
-    max_indents:           u8,           // max number of indents the user can indent a log message // NOTE: max_indents effects mini indents when prepending time or memory info, keep it as small as you think the max number of indents you the user will use.
-    max_message_chars:     u32,          // max number of characters per message, tested w/ value: 500
-    max_line_chars:        u32,          // max number of characters per line (must be less than MAX_MESSAGE_CHARS), tested w/ value: 150
+    prepend_datetime_fmt:    string,     // format specifying the datetime to prepend to each line printed
+    timezone:                string,     // timezone to use if prepend_datetime_fmt is not an empty string
+    prepend_elapsed_time:    bool,       // flag to prepend the time elapsed since the the Log's start_time
+    unix_start_time:         i64,        // unix start time used for prepending elapsed time, defaults to time when init() is called
+    start_time_microseconds: i32,        // microsecond component of start time used for prepending time elapsed
+    prepend_memory_usage:    bool,       // prepend the memory used and allocated to the program using the logging util
+    max_indents:             u8,         // max number of indents the user can indent a log message // NOTE: max_indents effects mini indents when prepending time or memory info, keep it as small as you think the max number of indents you the user will use.
+    max_message_chars:       u32,        // max number of characters per message, tested w/ value: 500
+    max_line_chars:          u32,        // max number of characters per line (must be less than MAX_MESSAGE_CHARS), tested w/ value: 150
 
-    prev_console_message:  string,       // variables used for overwrite_prev_msg
-    logfile_last_offset:   i64,          // byte offset where last log message started (defaults to 0)
+    prev_console_message:    string,     // variables used for overwrite_prev_msg
+    logfile_last_offset:     i64,        // byte offset where last log message started (defaults to 0)
 
-    mutex:                 sync.Mutex,   // thread safety mutex
+    mutex:                   sync.Mutex, // thread safety mutex
 
     /////////////////////// Procedure Pointers (aka OOP class functions) //////////////////////////
 
@@ -67,13 +70,27 @@ Log :: struct {
         ok: bool,                                // success flag
     ),
 
+    // test: proc(log: ^Log) // see example test() of declaring a procedure inside init()
+
     // set/update prepend_datetime_fmt for future log messages to be printed
-    set_prepend_datetime_fmt: proc(log: ^Log, new_prepend_datetime_fmt: string),
+    set_prepend_datetime_fmt: proc(
+        log: ^Log,
+        new_prepend_datetime_fmt: string
+    ),
 
     // set/update timezone for future log messages to be printed
-    set_timezone: proc(log: ^Log, new_timezone: string),
+    set_timezone: proc(
+        log: ^Log,
+        new_timezone: string
+    ),
 
-    // test: proc(log: ^Log) // see example of declaring a procedure inside init()
+    // update the start time for elapsed time prepend info to a specific time with tuple
+    // (unix time in seconds, microseconds), or to the current time with the default nil value
+    set_start_time: proc(
+        log: ^Log,
+        unix_start_time: i64 = 0,
+        microseconds: i32 = 0,
+    ),
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     
@@ -81,20 +98,23 @@ Log :: struct {
 
 
 init :: proc(
-    enabled:              bool      = true,
-    output_to_logfile:    bool      = true,
-    filepath:             string    = "",
-    clear_old_log:        bool      = true, // flag to clear the log file or not
-	logfile_indent:       string    = "    ",
-    output_to_console:    bool      = true,
-	console:              ^os2.File = {}, // {} maps to os2.stdout
-	console_indent:       string    = "|   ",
-    prepend_datetime_fmt: string    = "",
-	timezone:             string    = "UTC",
-    prepend_memory_usage: bool      = false,
-	max_indents:          u8        = 10,
-	max_message_chars:    u32       = 10000,
-	max_line_chars:       u32       = 1000,
+    enabled:                 bool      = true,
+    output_to_logfile:       bool      = true,
+    filepath:                string    = "",
+    clear_old_log:           bool      = true, // flag to clear the log file or not
+	logfile_indent:          string    = "    ",
+    output_to_console:       bool      = true,
+	console:                 ^os2.File = {}, // {} maps to os2.stdout
+	console_indent:          string    = "|   ",
+    prepend_datetime_fmt:    string    = "",
+	timezone:                string    = "UTC",
+    prepend_elapsed_time:    bool      = false,
+    unix_start_time:         i64       = 0, // if unix_start_time == 0, use current time, else use unix_start_time
+    start_time_microseconds: i32       = 0, // if unix_start_time == 0, use current time, else use start_time_microseconds
+    prepend_memory_usage:    bool      = false,
+	max_indents:             u8        = 10,
+	max_message_chars:       u32       = 10000,
+	max_line_chars:          u32       = 1000,
 ) -> ^Log {
 
     // Init log struct
@@ -105,6 +125,7 @@ init :: proc(
     log.print = print
     log.set_prepend_datetime_fmt = set_prepend_datetime_fmt
     log.set_timezone = set_timezone
+    log.set_start_time = set_start_time
     // // example of declaring a procedure inside init()
     // log.test = proc(log: ^Log) {
     //     fmt.println("test")
@@ -156,8 +177,10 @@ init :: proc(
     }
     log.console_indent = console_indent
 
-    // Set prepend_datetime_fmt, timezone, and memory usage
+    // Set prepend info flags and data
     set_prepend_datetime_fmt_and_timezone(log, prepend_datetime_fmt, timezone)
+    set_start_time(log, unix_start_time=unix_start_time, microseconds=start_time_microseconds)
+    log.prepend_elapsed_time = prepend_elapsed_time
     log.prepend_memory_usage = prepend_memory_usage
 
     // Set message length maximums
@@ -334,6 +357,54 @@ f :: proc(
 }
 
 
+// Update/set prepend datetime format
+set_prepend_datetime_fmt :: proc(
+    log: ^Log,
+    new_prepend_datetime_fmt: string,
+) {
+    set_prepend_datetime_fmt_and_timezone(
+        log,
+        new_prepend_datetime_fmt,
+        log.timezone
+    )
+}
+
+
+// Update/set timezone
+set_timezone :: proc(
+    log: ^Log,
+    new_timezone: string,
+) {
+    set_prepend_datetime_fmt_and_timezone(
+        log,
+        log.prepend_datetime_fmt,
+        new_timezone
+    )
+}
+
+
+// Update/set the start time for elapsed time prepend info to a specific time with tuple
+// (unix time in seconds, microseconds), or to the current time with the default 0 value
+// for unix_start_time.
+set_start_time :: proc(log: ^Log, unix_start_time: i64 = 0, microseconds: i32 = 0) {
+    if unix_start_time == 0 {
+        start_sec: i64
+        start_usec: i32
+        rc: c.int = get_time_now_us(&start_sec, &start_usec)
+        if rc != 0 {
+            fmt.eprintf("LOG ERROR: init() call to FFI C function get_time_now_us() failed with return code %d\n", rc)
+            start_sec = 0
+            start_usec = 0
+        }
+        log.unix_start_time = start_sec
+        log.start_time_microseconds = start_usec
+    } else {
+        log.unix_start_time = unix_start_time
+        log.start_time_microseconds = microseconds
+    }
+}
+
+
 @(private)
 console_clear_previous_message :: proc(log: ^Log) {
     line_count := strings.count(log.prev_console_message, "\n")
@@ -377,7 +448,7 @@ get_formatted_messages :: proc(
     defer strings.builder_destroy(&p0)
     div_mark: rune = '-'
     mini_indent: rune = ' '
-    prepend_stuff: bool = log.prepend_datetime_fmt != "" || log.prepend_memory_usage
+    prepend_stuff: bool = log.prepend_datetime_fmt != "" || log.prepend_elapsed_time || log.prepend_memory_usage
     if prepend_stuff {
 
         // Create prepended info strings
@@ -400,6 +471,22 @@ get_formatted_messages :: proc(
             strings.write_string(&p, "  ")
         }
 
+        // Prepend elapsed time since log's start time in HH:MM:SS.ffffff format
+        if log.prepend_elapsed_time {
+            elapsed_time_str, ok := get_formatted_elapsed_time(log)
+            if !ok {
+                fmt.eprintln("LOG ERROR: failed to get elapsed time for prepending")
+                elapsed_time_str = "LOG ERROR: failed to get elapsed time"
+            }
+            // fmt.println("elapsed_time_str:", elapsed_time_str)
+            if log.prepend_datetime_fmt != "" {
+                strings.write_rune(&p, div_mark)
+                strings.write_string(&p, "  ")
+            }
+            strings.write_string(&p, elapsed_time_str)
+            strings.write_string(&p, "  ")
+        }
+
         // Prepend memory usage
         if log.prepend_memory_usage {
             // Example using global stats; you can implement a function to get actual memory usage if you want
@@ -409,7 +496,7 @@ get_formatted_messages :: proc(
                 mem_usage_str = "LOG ERROR failed to get memory usage"
             }
             // fmt.println("mem_usage_str:", mem_usage_str)
-            if log.prepend_datetime_fmt != "" {
+            if log.prepend_datetime_fmt != "" || log.prepend_elapsed_time {
                 strings.write_rune(&p, div_mark)
                 strings.write_string(&p, "  ")
             }
@@ -491,13 +578,51 @@ get_formatted_messages :: proc(
 }
 
 
-// get_formatted_current_time returns the current datetime as a formatted string
-//
-// - timezone: "local" or "UTC", defaults to UTC
-// - format:   format to display datetime in
-//             based on strftime. available formats: https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
-//
-// Returns: the formatted datetime string (or empty on error)
+// Used C bindings for get_formatted_current_time() and get_formatted_elapsed_time() because I failed to get the local time in odin, only UTC. Also setting the timezone seems to require the UTC offset, which gets complicated because of daylights saving time. Also I couldn't find a way to format it via a user provided format string. see odin time package docs: https://pkg.odin-lang.org/core/time
+// binding odin to c: https://odin-lang.org/news/binding-to-c/
+when ODIN_OS == .Windows do foreign import current_time_info "./../c/current_time_info.lib" // path relative to this files parent dir
+when ODIN_OS == .Linux   do foreign import current_time_info "./../c/current_time_info.a"
+when ODIN_OS == .Darwin  do foreign import current_time_info "./../c/current_time_info.a"
+foreign current_time_info {
+
+    get_time_now_us :: proc(
+        unix_seconds: ^c.int64_t,
+        microseconds: ^c.int32_t,
+    ) -> c.int ---
+
+    format_time_us :: proc(
+        unix_seconds: c.int64_t,
+        microseconds: c.int32_t,
+        timezone: cstring,
+        format: cstring,
+        out: cstring,
+        out_cap: c.size_t,
+    ) -> c.int ---
+
+    elapsed_us_since :: proc(
+        start_sec: c.int64_t,
+        start_usec: c.int32_t,
+        out_sec: ^c.int32_t,
+        out_usec: ^c.int32_t,
+    ) -> c.int ---
+
+    format_elapsed_us :: proc(
+        elapsed_sec: c.int32_t,
+        elapsed_usec: c.int32_t,
+        out: cstring,
+        out_cap: c.size_t,
+    ) -> c.int ---
+}
+
+
+/* get_formatted_current_time() returns the current datetime as a formatted string
+
+    - timezone: "local" or "UTC", defaults to UTC
+    - format:   format to display datetime in
+                based on strftime. available formats: https://man7.org/linux/man-pages/man3/strftime.3.html
+                i added %f format for microseconds like python has: https://strftime.org/
+
+    Returns: the formatted datetime string (or empty on error) */
 @(private)
 get_formatted_current_time :: proc(
     timezone:    string,
@@ -508,40 +633,92 @@ get_formatted_current_time :: proc(
     bool,
 ) {
 
+    // get current time in seconds + microseconds
+    unix_sec: i64
+    micro_sec: i32
+    rc: c.int = get_time_now_us(&unix_sec, &micro_sec)
+    if rc != 0 {
+        fmt.eprintf("LOG ERROR: get_formatted_current_time() call to FFI C function get_time_now_us() failed with return code %d\n", rc)
+        return "", false
+    }
+
     // allocate empty cstring of buffer_size
     buffer, err := mem.alloc(buffer_size)
     if err != nil {
-        fmt.eprintf("datetime cstring allocation failed: %v\n", err)
+        fmt.eprintf("LOG ERROR: datetime cstring allocation failed: %v\n", err)
         return "", false
     }
     datetime_cstr := cstring(buffer)
     defer mem.free(buffer)
 
-    rc: c.int = get_current_time(
+    // format the time string
+    rc = format_time_us(
+        unix_sec,
+        micro_sec,
         cstring(raw_data(timezone)),
-        datetime_cstr,
-        c.size_t(buffer_size),
         cstring(raw_data(format)),
+        datetime_cstr,
+        c.size_t(buffer_size)
     )
     if rc != 0 {
-        fmt.eprintf("get_current_time failed → %d\n", rc)
+        fmt.eprintf("LOG ERROR: get_formatted_current_time() call to FFI C function format_time_us() failed with return code %d\n", rc)
         return "", false
     }
 
     return string(datetime_cstr), true
 }
-// used a c binding for get_formatted_current_time() because I failed to get the local time in odin, only UTC. Also setting the timezone seems to require the UTC offset, which gets complicated because of daylights saving time. Also I couldn't find a way to format it via a user provided format string. see odin time package docs: https://pkg.odin-lang.org/core/time
-when ODIN_OS == .Windows do foreign import current_time_formatted "./current_time_formatted.lib" // path relative to this files parent dir
-when ODIN_OS == .Linux   do foreign import current_time_formatted "./current_time_formatted.a"
-when ODIN_OS == .Darwin  do foreign import current_time_formatted "./current_time_formatted.a"
-// binding odin to c: https://odin-lang.org/news/binding-to-c/
-foreign current_time_formatted {
-    get_current_time :: proc(
-        timezone: cstring,
-        datetime_str: cstring,
-        datetime_str_capacity: c.size_t,
-        format: cstring,
-    )-> c.int ---
+
+
+/* get_formatted_elapsed_time returns the elapsed time since the log's start time
+
+    Returns: formatted string "HH:MM:SS.ffffff" and success flag */
+@(private)
+get_formatted_elapsed_time :: proc(
+    log: ^Log,
+    buffer_size: int = 32,
+) -> (
+    string,
+    bool
+) {
+    if log == nil do return "", false
+
+    elapsed_sec:  i32 // elapsed seconds since log.start_sec
+    elapsed_usec: i32 // elapsed microseconds since log.start_usec
+
+    // compute elapsed time since start_sec/start_usec
+    rc: c.int = elapsed_us_since(
+        log.unix_start_time,
+        log.start_time_microseconds,
+        &elapsed_sec,
+        &elapsed_usec
+    )
+    if rc != 0 {
+        fmt.eprintf("LOG ERROR: get_formatted_elapsed_time() call to FFI C function elapsed_us_since() failed with return code %d\n", rc)
+        return "", false
+    }
+
+    // allocate empty cstring of buffer_size
+    buffer, err := mem.alloc(buffer_size)
+    if err != nil {
+        fmt.eprintf("LOG ERROR: elapsed time cstring allocation failed: %v\n", err)
+        return "", false
+    }
+    elapsed_time_cstr := cstring(buffer)
+    defer mem.free(buffer)
+
+    // format elapsed time as HH:MM:SS.ffffff
+    rc = format_elapsed_us(
+        elapsed_sec,
+        elapsed_usec,
+        elapsed_time_cstr,
+        c.size_t(buffer_size),
+    )
+    if rc != 0 {
+        fmt.eprintf("LOG ERROR: get_formatted_elapsed_time() call to FFI C function format_elapsed_us() failed with return code %d\n", rc)
+        return "", false
+    }
+
+    return string(elapsed_time_cstr), true
 }
 
 
@@ -576,30 +753,6 @@ get_memory_str :: proc(bytes: u64) -> string {
 
     // %.4f matches your C snprintf precisely
     return fmt.tprintf("%.4f %s", b, units[unit_idx])
-}
-
-
-set_prepend_datetime_fmt :: proc(
-    log: ^Log,
-    new_prepend_datetime_fmt: string,
-) {
-    set_prepend_datetime_fmt_and_timezone(
-        log,
-        new_prepend_datetime_fmt,
-        log.timezone
-    )
-}
-
-
-set_timezone :: proc(
-    log: ^Log,
-    new_timezone: string,
-) {
-    set_prepend_datetime_fmt_and_timezone(
-        log,
-        log.prepend_datetime_fmt,
-        new_timezone
-    )
 }
 
 

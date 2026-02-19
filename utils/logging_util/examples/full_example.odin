@@ -7,7 +7,7 @@ import "base:runtime"
 import "core:path/filepath"
 import "core:encoding/json"
 import "core:thread"
-import logging_util "../src"
+import logging_util "../src/odin"
 
 // global variable so you don't need to pass it to each function using it
 log: ^logging_util.Log
@@ -117,18 +117,35 @@ test_print :: proc() {
     log3->print("testing single line indented prepend_memory_usage", i=2)
     logging_util.close(log3)
 
-    // test both prepend datetime and memory usage
+    // test prepend elapsed time since log start time
     log4 := logging_util.init(
         enabled=LOGGING_ENABLED,
         output_to_console=true,
         output_to_logfile=false,
+        prepend_elapsed_time=true,
+    )
+    log4->print("testing single line prepend_elapsed_time", ns=true)
+    log4->print("testing\nmulti\nline\nprepend_elapsed_time", i=1)
+    log4->print("testing single line indented prepend_elapsed_time", i=2)
+    log4->set_start_time()
+    log4->print("testing reset start time", i=1)
+    logging_util.close(log4)
+
+    // test prepend all info
+    log5 := logging_util.init(
+        enabled=LOGGING_ENABLED,
+        output_to_console=true,
+        output_to_logfile=false,
         prepend_datetime_fmt="%y-%m-%d %H:%M:%S.%f %Z",
+        // timezone="local",
+        timezone="UTC",
+        prepend_elapsed_time=true,
         prepend_memory_usage=true,
     )
-    log4->print("testing single line prepend_datetime_fmt and prepend_memory_usage", ns=true)
-    log4->print("testing\nmulti\nline\nprepend_datetime_fmt\nand\nprepend_memory_usage", i=1)
-    log4->print("testing single line indented prepend_datetime_fmt and prepend_memory_usage", i=2)
-    logging_util.close(log4)
+    log5->print("testing single line prepend all info", ns=true)
+    log5->print("testing\nmulti\nline\nprepend\nall\ninfo", i=1)
+    log5->print("testing single line indented prepend all info", i=2)
+    logging_util.close(log5)
 
 }
 
@@ -303,12 +320,12 @@ thread_print_loop :: proc(t: ^thread.Thread) {
 
 test_thread_safety :: proc(_i: u8 = 0) -> (ok: bool) {
     log->print("thread_safety_test():", i=_i-1, ns=true)
-    log->set_prepend_datetime_fmt("%y-%m-%d %H:%M:%S.%f %Z")
+    log.prepend_elapsed_time = true
     log.prepend_memory_usage = true
 	sleep_time := time.Millisecond * 500
     if LOGGING_ENABLED do time.sleep(3*sleep_time)
-
     threads: [THREAD_COUNT]^thread.Thread
+    log->set_start_time()
 
     // Create and start test threads
     for &t, i in threads {

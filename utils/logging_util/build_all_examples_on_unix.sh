@@ -20,8 +20,8 @@ gcc \
     -fno-semantic-interposition \
     -falign-functions=32 \
     -falign-loops=32 \
-    src/current_time_formatted.c \
-    -o src/current_time_formatted.o
+    src/c/current_time_formatted.c \
+    -o src/c/current_time_formatted.o
 # -c
 #    Only compile — do not link. Produces an object file (.o) instead of an executable.
 #    Required when building a static library (.a) like in your case.
@@ -86,7 +86,7 @@ gcc \
 #    Without -o, GCC would use a default name (e.g. current_time_formatted.o in cwd).
 
 # Create staic C library that odin code incorporates
-ar rcs src/current_time_formatted.a src/current_time_formatted.o
+ar rcs src/c/current_time_formatted.a src/c/current_time_formatted.o
 
 # build the odin code w/out performance optimization (for development)
 # odin build examples/readme_example.odin -file -out:build/readme_example

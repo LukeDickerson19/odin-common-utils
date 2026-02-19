@@ -1,7 +1,7 @@
 package readme_example
 
 import "core:fmt"
-import logging_util "../src"
+import logging_util "../src/odin"
 
 // global variable so you don't need to pass it to each function using it
 logger: ^logging_util.Log
