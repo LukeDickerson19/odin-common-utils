@@ -52,6 +52,9 @@ Logging Util:
 
         test cross platform
 
+        update readme
+        
+
     Backlog:
 
         maybe experiment with updating print() to take a struct PrintOptionalArgs
