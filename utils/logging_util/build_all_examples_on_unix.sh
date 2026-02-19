@@ -4,8 +4,8 @@ set -e
 # build the C code
 echo "building C code"
 
-# # build the C code w/out performance optimizations (for developement):
-# gcc -c src/current_time_formatted.c -o src/current_time_formatted.o
+rm -rf src/c/build
+mkdir src/c/build
 
 # build the C code w/ performance optimizations (for production):
 # Aggressive optimization for maximum speed (includes -O3 + some FP approximations)
@@ -20,8 +20,8 @@ gcc \
     -fno-semantic-interposition \
     -falign-functions=32 \
     -falign-loops=32 \
-    src/c/current_time_formatted.c \
-    -o src/c/current_time_formatted.o
+    src/c/c_bindings.c \
+    -o src/c/build/c_bindings.o
 # -c
 #    Only compile — do not link. Produces an object file (.o) instead of an executable.
 #    Required when building a static library (.a) like in your case.
@@ -86,14 +86,12 @@ gcc \
 #    Without -o, GCC would use a default name (e.g. current_time_formatted.o in cwd).
 
 # Create staic C library that odin code incorporates
-ar rcs src/c/current_time_formatted.a src/c/current_time_formatted.o
-
-# build the odin code w/out performance optimization (for development)
-# odin build examples/readme_example.odin -file -out:build/readme_example
-# odin build examples/full_example.odin -file -out:build/full_example
+ar rcs src/c/build/libc_bindings.a src/c/build/c_bindings.o
 
 # build the odin code w/ performance optimization (for production)
 echo "building odin code"
+rm -rf build
+mkdir build
 echo "building odin code examples/readme_example.odin"
 odin build examples/readme_example.odin -file \
     -o:speed -no-bounds-check -disable-assert \

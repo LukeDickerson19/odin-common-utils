@@ -1,3 +1,4 @@
+#include "c_bindings.h"
 #include <time.h>          // time_t, struct tm, time(), localtime_r(), gmtime_r(), strftime(), gettimeofday()
 #include <stdio.h>         // fprintf(), snprintf()
 #include <string.h>        // strcmp(), strstr(), memcpy(), strncat(), strlen()
@@ -14,6 +15,7 @@
     #include <sys/time.h>  // struct timeval, gettimeofday()
     #include <unistd.h>        // usleep()
 #endif
+
 
 
 //////////////// current time functions ////////////////
@@ -237,7 +239,31 @@ int main(void) {
 */
 
 
+
 //////////////// memory usage functions ////////////////
+
+static char* get_memory_str(size_t bytes) {
+    // converts the int number of bytes to a string with appropriate units
+    static char buffer[64];
+    const char* units[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"};
+    const int num_units = sizeof(units) / sizeof(units[0]);
+    double b = (double)bytes;
+    int index = 0;
+    while (b >= 1024 && index < num_units - 1) {
+        b /= 1024.0;
+        index++;
+    }
+    if (index == 0) {
+        if (bytes == 1) {
+            snprintf(buffer, sizeof(buffer), "1 byte");
+        } else {
+            snprintf(buffer, sizeof(buffer), "%zu bytes", bytes);
+        }
+    } else {
+        snprintf(buffer, sizeof(buffer), "%.4f %s", b, units[index]);
+    }
+    return buffer;
+}
 
 int get_process_memory_usage(char *buf, size_t buf_cap) {
     if (!buf || buf_cap == 0)
@@ -282,7 +308,7 @@ int get_process_memory_usage(char *buf, size_t buf_cap) {
 
     #endif
 
-    snprintf(buf, buf_cap, "%14s used  ", _get_memory_str(bytes));
+    snprintf(buf, buf_cap, "%14s used  ", get_memory_str(bytes));
     return 0;
 
     fail:
@@ -290,32 +316,7 @@ int get_process_memory_usage(char *buf, size_t buf_cap) {
     return -1;
 }
 
-char* get_memory_str(size_t bytes) {
-    // converts the int number of bytes to a string with appropriate units
-    static char buffer[64];
-    const char* units[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"};
-    const int num_units = sizeof(units) / sizeof(units[0]);
-    double b = (double)bytes;
-    int index = 0;
-    while (b >= 1024 && index < num_units - 1) {
-        b /= 1024.0;
-        index++;
-    }
-    if (index == 0) {
-        if (bytes == 1) {
-            snprintf(buffer, sizeof(buffer), "1 byte");
-        } else {
-            snprintf(buffer, sizeof(buffer), "%zu bytes", bytes);
-        }
-    } else {
-        snprintf(buffer, sizeof(buffer), "%.4f %s", b, units[index]);
-    }
-    return buffer;
-}
-
-////////////////////////////////////////////////////////
-
-///* TEST:
+/* TEST:
 // build: gcc c_bindings.c -o test_memory_usage_info.o
 // run:   ./test_memory_usage_info.o
 int main(void) {
@@ -323,35 +324,41 @@ int main(void) {
 
     // Initial memory usage
     if (get_process_memory_usage(buf, sizeof(buf)) == 0) {
-        printf("Initial memory: %s\n", buf);
+        printf("\nInitial memory usage:          %s\n", buf);
     } else {
-        printf("Memory read error\n");
+        printf("\nMemory read error\n");
     }
 
     // Allocate some memory
-    printf("Allocating 50 MB...\n");
+    printf("\nAllocating 50 MB ...\n");
     char *data = malloc(50 * 1024 * 1024);
     if (!data) {
-        printf("Allocation failed\n");
+        printf("\nAllocation failed\n");
         return 1;
     }
     memset(data, 0, 50 * 1024 * 1024); // touch memory so OS actually allocates
 
         // Memory usage after allocation
     if (get_process_memory_usage(buf, sizeof(buf)) == 0) {
-        printf("After allocation: %s\n", buf);
+        printf("Memory usage after allocation: %s\n", buf);
     } else {
         printf("Memory read error\n");
     }
 
     // Free memory
+    printf("\nFreeing memory ...\n");
     free(data);
 
     // Memory usage after free
     if (get_process_memory_usage(buf, sizeof(buf)) == 0) {
-        printf("After free: %s\n", buf);
+        printf("Memory usage after free:       %s\n\n", buf);
     } else {
-        printf("Memory read error\n");
+        printf("Memory read error\n\n");
     }
 }
-//*/
+*/
+
+
+
+////////////////////////////////////////////////////////
+

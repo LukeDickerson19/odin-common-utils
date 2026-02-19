@@ -1,14 +1,17 @@
 cmake_minimum_required(VERSION 3.20)
-project(current_time_info C)
+project(c_bindings C)
 
-add_library(current_time_info STATIC
-    current_time_info.c
+# Create a static library from c_bindings.c
+add_library(c_bindings STATIC
+    c_bindings.c
 )
 
-set_target_properties(current_time_info PROPERTIES
+# Make sure the library uses the C compiler
+set_target_properties(c_bindings PROPERTIES
     LINKER_LANGUAGE C
 )
 
-target_include_directories(current_time_info PUBLIC
+# Include directory for consumers of the library
+target_include_directories(c_bindings PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

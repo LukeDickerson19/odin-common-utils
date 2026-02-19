@@ -1,3 +1,0 @@
-C:/Users/luciu/rooms/odin-common-utils/utils/logging_util/src/c/build/CMakeFiles/current_time_info.dir
-C:/Users/luciu/rooms/odin-common-utils/utils/logging_util/src/c/build/CMakeFiles/edit_cache.dir
-C:/Users/luciu/rooms/odin-common-utils/utils/logging_util/src/c/build/CMakeFiles/rebuild_cache.dir

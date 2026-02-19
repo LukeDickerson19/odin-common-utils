@@ -1,10 +1,6 @@
 #ifndef C_BINDINGS_H
 #define C_BINDINGS_H
 
-// NOTE: This header is technically unnecessary for Odin code to call these
-// C functions because Odin calls them by linking directly to the library.
-// It would only be needed if C/C++ code wanted to call them.
-
 #include <stdint.h>  // Required for int64_t, int32_t
 #include <stddef.h>  // Required for size_t
 
@@ -25,8 +21,6 @@ int format_elapsed_us(int32_t elapsed_sec, int32_t elapsed_usec,
 //////////////// memory usage functions ////////////////
 
 int get_process_memory_usage(char *buf, size_t buf_cap);
-
-char* get_memory_str(size_t bytes);
 
 ////////////////////////////////////////////////////////
 

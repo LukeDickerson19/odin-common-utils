@@ -33,25 +33,23 @@ Logging Util:
 
         build c code (from project root dir):
             linux:
-                gcc -c src/c/current_time_info.c -o src/c/build/current_time_info.o
-                ar rcs src/c/current_time_info.a src/c/build/current_time_info.o
+                rm -rf src/c/build/
+                cmake -S src/c -B src/c/build
+                cmake --build src/c/build
             windows:
                 rmdir /s /q src\c\build
                 cmake -S src\c -B src\c\build -G Ninja -DCMAKE_C_COMPILER=clang
                 cmake --build src\c\build
 
-                TODO: TO BE TESTED:
-                    cl -TC -c src\c\current_time_info.c
-                    lib -nologo src\c\current_time_info.obj -out:src\c\current_time_info.lib
-
         build odin code:
-            # NOTE: building all files at once would require making them an odin collection cause each test/example has its own main function
             linux:
+                rm -rf build; mkdir build # odin build cmd doesn't autocreate build dir
                 odin build examples/readme_example.odin -file -out:build/readme_example
                 odin build examples/full_example.odin -file -out:build/full_example
             windows:
                 odin build examples/readme_example.odin -file -out:build/readme_example.exe
                 odin build examples/full_example.odin -file -out:build/full_example.exe
+            # NOTE: building all files at once would require making them an odin collection cause each test/example has its own main function
 
     Run:
         linux:
@@ -63,9 +61,9 @@ Logging Util:
     To Do:
 
         test cross platform
-            update linux build folder structure now that were using cmake on windows
-                also test memory usage functions on linux, then use them in odin code, and delete memory_usage_*.odin
-            create release windows build
+            DONE update linux build folder structure now that were using cmake on windows
+            DONE test memory usage c functions on linux, then use them in odin code, and delete memory_usage_*.odin
+            TODO create release windows build
 
         update readme
             finish readme example

@@ -490,7 +490,7 @@ get_formatted_messages :: proc(
         // Prepend memory usage
         if log.prepend_memory_usage {
             // Example using global stats; you can implement a function to get actual memory usage if you want
-            mem_usage_str, ok := get_process_memory_usage()
+            mem_usage_str, ok := get_formatted_memory_usage()
             if !ok {
                 fmt.eprintln("LOG ERROR: failed to get memory usage for prepending")
                 mem_usage_str = "LOG ERROR failed to get memory usage"
@@ -580,10 +580,10 @@ get_formatted_messages :: proc(
 
 // Used C bindings for get_formatted_current_time() and get_formatted_elapsed_time() because I failed to get the local time in odin, only UTC. Also setting the timezone seems to require the UTC offset, which gets complicated because of daylights saving time. Also I couldn't find a way to format it via a user provided format string. see odin time package docs: https://pkg.odin-lang.org/core/time
 // binding odin to c: https://odin-lang.org/news/binding-to-c/
-when ODIN_OS == .Windows do foreign import current_time_info "./../c/build/current_time_info.lib" // path relative to this files parent dir
-when ODIN_OS == .Linux   do foreign import current_time_info "./../c/build/current_time_info.a"
-when ODIN_OS == .Darwin  do foreign import current_time_info "./../c/build/current_time_info.a"
-foreign current_time_info {
+when ODIN_OS == .Windows do foreign import c_bindings "./../c/build/c_bindings.lib" // path relative to this files parent dir
+when ODIN_OS == .Linux   do foreign import c_bindings "./../c/build/libc_bindings.a"
+when ODIN_OS == .Darwin  do foreign import c_bindings "./../c/build/libc_bindings.a"
+foreign c_bindings {
 
     get_time_now_us :: proc(
         unix_seconds: ^c.int64_t,
@@ -612,6 +612,12 @@ foreign current_time_info {
         out: cstring,
         out_cap: c.size_t,
     ) -> c.int ---
+
+    get_process_memory_usage :: proc(
+        buf: cstring,
+        buf_cap: c.size_t,
+    ) -> c.int ---
+
 }
 
 
@@ -722,13 +728,32 @@ get_formatted_elapsed_time :: proc(
 }
 
 
+// get_formatted_memory_usage() returns the programs current memory usage as a formatted string
 @(private)
-get_process_memory_usage :: proc() -> (string, bool) {
-    bytes, ok := get_os_specific_memory() // Compiler finds this in the suffixed files
-    if !ok do return "Memory read error  ", false
+get_formatted_memory_usage :: proc(
+    buffer_size: int = 256,
+) -> (string, bool) {
 
-    mem_str := get_memory_str(bytes)
-    return fmt.tprintf("%14s used  ", mem_str), true
+    // allocate empty cstring of buffer_size
+    buffer, err := mem.alloc(buffer_size)
+    if err != nil {
+        fmt.eprintf("LOG ERROR: memory usage cstring allocation failed: %v\n", err)
+        return "", false
+    }
+    memory_usage_cstr := cstring(buffer)
+    defer mem.free(buffer)
+
+    // format the time string
+    rc: c.int = get_process_memory_usage(
+        memory_usage_cstr,
+        c.size_t(buffer_size)
+    )
+    if rc != 0 {
+        fmt.eprintf("LOG ERROR: get_formatted_memory_usage() call to FFI C function get_process_memory_usage() failed with return code %d\n", rc)
+        return "", false
+    }
+
+    return string(memory_usage_cstr), true
 }
 
 
