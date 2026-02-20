@@ -2,7 +2,7 @@
 
 #### DESCRIPTION
 
-> Thread-safe logging util written in Odin (and C FFI) supporting hierarchical indentation for log messages — useful for navigating logs in editors that support code folding.
+> Thread-safe logging util written in Odin (plus C ffi) supporting hierarchical indentation for log messages — useful for navigating logs in editors that support code folding.
 > 
 > Features:
 > - Arbitrary indentation levels per log call (via optional int argument)
