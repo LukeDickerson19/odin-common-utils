@@ -4,56 +4,51 @@ import "core:fmt"
 import logging_util "../src/odin"
 
 // global variable so you don't need to pass it to each function using it
-logger: ^logging_util.Log
+log: ^logging_util.Log
+f := logging_util.f // convenience procedure for string formatting
+LOGGING_ENABLED :: true // toggle logging entirely for ALL log structs
 
 main :: proc() {
 
     // init any non default log settings
 	// see src/logging_util/logging_util.odin's Log struct for all settings
-	logger = logging_util.init(
+	log = logging_util.init(
+		enabled=LOGGING_ENABLED,
 		output_to_logfile = true,
 		filepath = "readme_example_log.txt",
 		clear_old_log = true,
 		output_to_console = true,
-		prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S.%f %Z",
-		timezone = "local",
-		prepend_memory_usage = true,
 	)
 	// close the log to free memory at the end of the scope
-	defer logging_util.close(logger)
+	defer logging_util.close(log)
 
     // log messages with different indent levels
-	logger->print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", i=0)
-	logger->print("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", i=1)
-	logger->print("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", i=2)
-	
-	// // 2. Multiline string
-	// logger.print("indented\nmulti\nline\nstring", {indent = 3})
+	log->print("a", i=0)
+	log->print("b", i=1)
+	log->print("c", i=2)
+	log->print("indented\nmulti\nline\nstring", i=3)
+	log->print(f("formatted string: %d %c %s", 7, 'f', "hellooo"), i=1)
+	log->print("new line before log message", i=1, ns=true) // ns = newline start
+	log->print("new line after log message", i=1, ne=true) // ne = newline end
+	log->print("new line after log message\n", i=1)
 
-	// // 3. Formatting (Replaces your FMT macro)
-	// // tprintf uses a thread-local temporary buffer, very similar to your stack-allocated macro
-	// logger.print(fmt.tprintf("formatted string: %d %c %s", 7, 'f', "hellooo"), {indent = 1})
+	// prepend datetime and memory usage
+	log->set_prepend_datetime_fmt("%Y-%m-%d %H:%M:%S.%f %Z")
+	/* datetime formats are based on strftime:
+		https://man7.org/linux/man-pages/man3/strftime.3.html
+		plus %f format for microseconds like in python:
+		https://strftime.org/
+    */
+	log->set_timezone("local") // valid options: "UTC", "local"
+	log->print("multiline\nmessage\nwith\nprepend_datetime_fmt")
+	log->set_prepend_datetime_fmt("") // turn off prepending datetime
+    log.prepend_memory_usage = true
+	log->print("multiline\nmessage\nwith\nprepend_memory_usage")
+	log->set_prepend_datetime_fmt("%Y-%m-%d %H:%M:%S.%f %Z")
+	log->print("message", i=0);
+	log->print("with", i=1);
+	log->print("both", i=1);
+	log->print("and", i=2);
+	log->print("indents", i=3);
 
-	// // 4. New lines (ns/ne)
-	// logger.print("new line before log message", {indent = 1, new_line_start = true})
-	// logger.print("new line after log message",  {indent = 1, new_line_end = true})
-
-	// // 5. Prepend Datetime
-	// logger.prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S.%f %Z"; // other available formats: https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
-
-	// logger.timezone = "local"
-	// logger.print("multiline\nmessage\nwith\nprepend_datetime_fmt")
-
-	// // 6. Prepend Memory Usage
-	// logger.prepend_datetime_fmt = ""
-	// logger.prepend_memory_usage = true
-	// logger.print("multiline\nmessage\nwith\nprepend_memory_usage")
-
-	// // 7. Mixing everything
-	// logger.prepend_datetime_fmt = "%Y-%m-%d %H:%M:%S"
-	// logger.print("message", {indent = 0})
-	// logger.print("with",    {indent = 1})
-	// logger.print("both",    {indent = 1})
-	// logger.print("and",     {indent = 2})
-	// logger.print("indents", {indent = 3})
 }

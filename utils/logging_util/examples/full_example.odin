@@ -95,6 +95,11 @@ test_print :: proc() {
     delete(logfile_msg);
 
     // test prepend datetime
+    /* datetime formats are based on strftime:
+            https://man7.org/linux/man-pages/man3/strftime.3.html
+            plus %f format for microseconds like in python:
+            https://strftime.org/
+    */
     log2 := logging_util.init(
         enabled=LOGGING_ENABLED,
         output_to_console=true,

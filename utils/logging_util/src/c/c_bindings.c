@@ -54,7 +54,7 @@ int get_time_now_us(
 
 /* format_time_us() returns the current datetime as a formatted string (supports microsecond level resolution with "%f" format)
     - timezone: "local" or "UTC", defaults to UTC
-    - format:   datettime formats are based on strftime:
+    - format:   datetime formats are based on strftime:
             https://man7.org/linux/man-pages/man3/strftime.3.html
             plus %f format for microseconds like in python:
             https://strftime.org/
