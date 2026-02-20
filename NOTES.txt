@@ -71,7 +71,19 @@ Logging Util:
 
     To Do:
 
-        done
+        max chars
+
+            BEFORE adding prepended info and indents and stuff
+            if len msg0 > max msg len {
+                create new string with slice of msg0 (0:max msg len)
+                msg_trucated = true
+            }
+
+            ... append lines w/ prepend info to string builder ...
+                if len(line) > max line len:
+                    append slice of line (0:max line len)
+                    append truncated line message
+
 
     Backlog:
 

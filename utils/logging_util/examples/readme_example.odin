@@ -27,7 +27,7 @@ main :: proc() {
 	log->print("b", i=1)
 	log->print("c", i=2)
 	log->print("indented\nmulti\nline\nstring", i=3)
-	log->print(f("formatted string: %d %c %s", 7, 'f', "hellooo"), i=1)
+	log->print(f("formatted string: %d %r %s", 7, 'f', "hellooo"), i=1)
 	log->print("new line before log message", i=1, ns=true) // ns = newline start
 	log->print("new line after log message", i=1, ne=true) // ne = newline end
 	log->print("new line after log message\n", i=1)

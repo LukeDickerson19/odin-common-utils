@@ -8,7 +8,7 @@
 > - Arbitrary indentation levels per log call (via optional argument)
 > - Handles indentation for multi-line messages
 > - Microsecond datetime, time elapsed, and memory-usage prefixes (vertically aligned without breaking indentation)
-> - Overwrite the previously printed log message (via optional bool argument)
+> - Overwrite the previously printed log message (via optional bool argument), useful for loading percentages
 > - Output to console, log file, or both
 > - Thread-safety (using single global mutex)
 > 

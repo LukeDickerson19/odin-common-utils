@@ -94,6 +94,27 @@ test_print :: proc() {
     delete(console_msg);
     delete(logfile_msg);
 
+    // test line and message truncation
+    log->print("truncation tests:", i=1, ns=true)
+    default_max_message_chars := log.max_message_chars
+    default_max_line_chars := log.max_line_chars
+    test_max_message_chars := 500
+    test_max_line_chars := 50
+    log.max_message_chars = test_max_message_chars
+    long_line:="ABCDEFGHIJKLMNOPQRSTUVWXYZ12345!@#$%^&*()-+_=漢字日本水áéöüñпривет你好مرحباनमस्ते←↑→↓↔↕↖↗↘↙∞±≈√∑©®™🌟🚀😄🐍🏖️🎉"
+    log->print(f("Test message truncation:\nset log.max_message_chars to %d", log.max_message_chars), i=2, ns=true)
+    log->print(f("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line), i=3)
+    log.max_line_chars = test_max_line_chars
+    log->print(f("Test line truncation:\nset log.max_line_chars to %d", log.max_line_chars), i=2, ns=true)
+    log->print(long_line, i=3)
+    log->print("Test both:", i=2, ns=true)
+    log->print(f("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line), i=3)
+    log.max_message_chars = default_max_message_chars
+    log.max_line_chars    = default_max_line_chars
+    log->print("truncation tests complete.", i=1, ns=true, d=true)
+    log->print(f("restored log.max_line_chars    to default: %d", log.max_line_chars),    i=1)
+    log->print(f("restored log.max_message_chars to default: %d", log.max_message_chars), i=1, ne=true)
+
     // test prepend datetime
     /* datetime formats are based on strftime:
             https://man7.org/linux/man-pages/man3/strftime.3.html

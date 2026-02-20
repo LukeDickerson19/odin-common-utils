@@ -37,8 +37,8 @@ Log :: struct {
     start_time_microseconds: i32,        // microsecond component of unix start time
     prepend_memory_usage:    bool,       // prepend the memory used and allocated to the program using the logging util
     max_indents:             u8,         // max number of indents the user can indent a log message // NOTE: max_indents effects mini indents when prepending time or memory info, keep it as small as you estimate the max number of indents you'll use
-    max_message_chars:       u32,        // max number of characters per message, tested w/ value: 500
-    max_line_chars:          u32,        // max number of characters per line (must be less than MAX_MESSAGE_CHARS), tested w/ value: 150
+    max_message_chars:       int,        // max number of characters per message, tested w/ value: 500
+    max_line_chars:          int,        // max number of characters per line, tested w/ value: 150
 
     prev_console_message:    string,     // variables used for overwrite_prev_msg
     logfile_last_offset:     i64,        // byte offset where last log message started (defaults to 0)
@@ -66,8 +66,6 @@ Log :: struct {
     ) -> (
         ok: bool,
     ),
-
-    // test: proc(log: ^Log) // see example test() of declaring a procedure inside init()
 
     // set/update prepend_datetime_fmt for future log messages to be printed
     set_prepend_datetime_fmt: proc(
@@ -110,8 +108,8 @@ init :: proc(
     start_time_microseconds: i32       = 0, // if unix_start_time == 0, use current time, else use start_time_microseconds
     prepend_memory_usage:    bool      = false,
 	max_indents:             u8        = 10,
-	max_message_chars:       u32       = 10000,
-	max_line_chars:          u32       = 1000,
+	max_message_chars:       int       = 10000,
+	max_line_chars:          int       = 1000,
 ) -> ^Log {
 
     // Init log struct
@@ -123,11 +121,6 @@ init :: proc(
     log.set_prepend_datetime_fmt = set_prepend_datetime_fmt
     log.set_timezone = set_timezone
     log.set_start_time = set_start_time
-    // // example of declaring a procedure inside init()
-    // log.test = proc(log: ^Log) {
-    //     fmt.println("test")
-    // }
-    // log->test()
 
     // Return early if logging is disable
     log.enabled = enabled
@@ -343,8 +336,8 @@ print :: proc(
         }
     }
 
-    // free message strings if user did not pass pointer(s)
-    // to capture one or both of them
+    // free formatted strings if user did not pass
+    // pointer(s) to capture one or both of them
     if console_msg != nil do console_msg^ = console_str; else do delete(console_str)
     if logfile_msg != nil do logfile_msg^ = logfile_str; else do delete(logfile_str)
 
@@ -532,15 +525,25 @@ get_formatted_messages :: proc(
         { "console", log.console_indent, create_console_output },
         { "logfile", log.logfile_indent, create_logfile_output },
     }
+    fm: strings.Builder // formatted message builder
+    strings.builder_init(&fm, context.temp_allocator)
+    defer strings.builder_destroy(&fm)
     formatted_console_msg = "" // default - empty string if output_to_console = false
     formatted_logfile_msg = "" // default - empty string if output_to_logfile = false
     total_indent1, total_indent2, total_indent3: string
+    msg_truncated_suffix := " ... log message truncated ..."
+    line_truncated_suffix := " ... log line truncated ..."
+    truncated_msg := msg // local shadow copy (only copies string pointer and len, not the characters)
+    msg_was_truncated := false
+    if len(msg) > log.max_message_chars {
+        // Truncate msg to log.max_message_chars
+        msg_was_truncated = true
+        truncated_msg = truncate_utf8(truncated_msg, log.max_message_chars)
+    }
     for target in targets {
         if !target.create_output do continue
+        strings.builder_reset(&fm) // clear previous builder content
 
-        fm: strings.Builder // formatted message
-        strings.builder_init(&fm, context.temp_allocator)
-        defer strings.builder_destroy(&fm)
         total_indent1 = strings.repeat(target.indent, int(num_indents))
         total_indent2 = strings.repeat(target.indent, int(num_indents) + 1)
         total_indent3 = draw ? total_indent2 : total_indent1
@@ -551,7 +554,8 @@ get_formatted_messages :: proc(
             strings.write_rune(&fm, '\n')
         }
 
-        lines := strings.split(msg, "\n", context.temp_allocator)
+        lines := strings.split(truncated_msg, "\n", context.temp_allocator)
+        last_line_idx := len(lines) - 1
         for line, idx in lines {
             empty_line := line == ""
             if prepend_stuff {
@@ -564,7 +568,23 @@ get_formatted_messages :: proc(
                 }
             }
             strings.write_string(&fm, empty_line ? total_indent3 : total_indent1)
-            strings.write_string(&fm, line)
+
+            // Truncate line to log.max_line_chars
+            truncated_line := line
+            line_was_truncated := false
+            if len(truncated_line) > log.max_line_chars {
+                line_was_truncated = true
+                truncated_line = truncate_utf8(truncated_line, log.max_line_chars)
+            }
+            strings.write_string(&fm, truncated_line)
+            // Append msg_truncated_suffix over line_truncated_suffix
+            last_line := idx == last_line_idx
+            if last_line && msg_was_truncated {
+                strings.write_string(&fm, msg_truncated_suffix)
+            } else if line_was_truncated {
+                strings.write_string(&fm, line_truncated_suffix)
+            }
+
             strings.write_string(&fm, end)
         }
 
@@ -585,6 +605,73 @@ get_formatted_messages :: proc(
     return formatted_console_msg, formatted_logfile_msg, true
 }
 
+
+/* truncate_utf8() properly truncates runes that can be 1-4 bytes long in O(1) time complexity
+    TODO:
+        see if theres an odin core library function to do this instead (must be O(1) time complexity though)
+        https://pkg.odin-lang.org/core/strings
+
+    UTF-8 Rune Byte Structure:
+
+        In order to represent characters in languages other than english (and also emojis and other symbols)
+        UTF-8 encodes each symbol as a "rune" instead of a character. Runes are stored in 1–4 bytes.
+
+        | Rune length | First byte pattern | Continuation bytes           | Example                    |
+        | ----------- | ------------------ | ---------------------------- | -------------------------- |
+        | 1 byte      | `0xxxxxxx`         | none                         | ASCII `A` = 0x41           |
+        | 2 bytes     | `110xxxxx`         | `10xxxxxx`                   | `é` = 0xC3 0xA9            |
+        | 3 bytes     | `1110xxxx`         | `10xxxxxx 10xxxxxx`          | `漢` = 0xE6 0xBC 0xA2      |
+        | 4 bytes     | `11110xxx`         | `10xxxxxx 10xxxxxx 10xxxxxx` | `😀` = 0xF0 0x9F 0x98 0x80 |
+
+        Continuation bytes always have the form `10xxxxxx` (0x80–0xBF).
+        The first byte tells how many bytes the rune takes.
+
+        Example:
+            Let’s take `😀` (U+1F600) = 0xF0 0x9F 0x98 0x80:
+                Byte 1: 11110000  → indicates 4-byte rune
+                Byte 2: 10011111  → continuation
+                Byte 3: 10011000  → continuation
+                Byte 4: 10000000  → continuation
+
+            If you truncate the string in the middle:
+            * Only `0xF0 0x9F` -> invalid
+            * Need to drop it or replace with `?`
+
+    */
+@(private)
+truncate_utf8 :: proc(
+    s: string,
+    n: int,
+) -> string {
+    if len(s) == 0 || n >= len(s) do return s
+    if n == 0 do return ""
+
+    s2 := s[:n] // slice is O(1) but slices by byte instead of by rune
+
+    // Check last few bytes for incomplete UTF-8 rune
+    i := len(s2) - 1
+    j := 0
+    for (s2[i - j] & 0b1100_0000) == 0b1000_0000 && j < 4 do j += 1 // increment j until its not a continunation byte, or reaches 4
+    i -= j // set i to the index of the first byte of the last rune
+
+    // Truncate the last rune
+    return s2[:i]
+
+    // // Truncate the last rune if its incomplete
+    // b := s2[i]
+    // switch {
+    //     case b & 0b1000_0000 == 0: // b is the 1st byte of a 1 byte rune
+    //         return s2
+    //     case b & 0b1110_0000 == 0b1100_0000: // b is the 1st byte of a 2 byte rune
+    //         return j == 1 ? s2 : s2[:i]
+    //     case b & 0b1111_0000 == 0b1110_0000: // b is the 1st byte of a 3 byte rune
+    //         return j == 2 ? s2 : s2[:i]
+    //     case b & 0b1111_1000 == 0b1111_0000: // b is the 1st byte of a 4 byte rune
+    //         return j == 3 ? s2 : s2[:i]
+    //     case: // backup case
+    //         return ""
+    // }
+}
 
 // Used C bindings for get_formatted_current_time() and get_formatted_elapsed_time() because I failed to get the local time in odin, only UTC. Also setting the timezone seems to require the UTC offset, which gets complicated because of daylights saving time. Also I couldn't find a way to format it via a user provided format string. see odin time package docs: https://pkg.odin-lang.org/core/time
 // binding odin to c: https://odin-lang.org/news/binding-to-c/
