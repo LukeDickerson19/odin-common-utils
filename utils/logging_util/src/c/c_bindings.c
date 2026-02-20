@@ -2,13 +2,21 @@
 #include <stdio.h>         // fprintf(), snprintf()
 #include <string.h>        // strcmp(), strstr(), memcpy(), strncat(), strlen()
 #include <stdlib.h>        // malloc(), free(), setenv()
-#include <stdint.h>        // int64_t
+#include <stdint.h>        // int64_t, int32_t
 #ifdef _WIN32
     #include <windows.h>   // FILETIME, GetSystemTimePreciseAsFileTime()
+    #include <psapi.h> // for PROCESS_MEMORY_COUNTERS and GetProcessMemoryInfo
+// #elif defined(__APPLE__)
+//     #include <mach/mach.h>
+// #elif defined(__linux__) || defined(__ANDROID__)
+//     #include <unistd.h>
 #else
     #include <sys/time.h>  // struct timeval, gettimeofday()
     #include <unistd.h>        // usleep()
 #endif
+
+
+//////////////// current time functions ////////////////
 
 // get_time_now_us() gets the current unix time with microsecond precision
 int get_time_now_us(
@@ -39,12 +47,13 @@ int get_time_now_us(
     return 0;
 }
 
-// format_time_us() returns the current datetime as a formatted string (supports microsecond level resolution with "%f" format)
-// - timezone: "local" or "UTC", defaults to UTC
-// - format:   datettime formats are based on strftime:
-//             https://man7.org/linux/man-pages/man3/strftime.3.html
-//             plus %f format for microseconds like in python:
-//             https://strftime.org/
+/* format_time_us() returns the current datetime as a formatted string (supports microsecond level resolution with "%f" format)
+    - timezone: "local" or "UTC", defaults to UTC
+    - format:   datettime formats are based on strftime:
+            https://man7.org/linux/man-pages/man3/strftime.3.html
+            plus %f format for microseconds like in python:
+            https://strftime.org/
+    */
 int format_time_us(
     int64_t unix_seconds,
     int32_t microseconds,
@@ -159,8 +168,8 @@ int format_elapsed_us(
     return 0;
 }
 
-/* TEST
-// build: gcc current_time_info.c -o test_current_time_info.o
+/* TEST:
+// build: gcc c_bindings.c -o test_current_time_info.o
 // run:   ./test_current_time_info.o
 int main(void) {
 
@@ -227,3 +236,122 @@ int main(void) {
 }
 */
 
+
+//////////////// memory usage functions ////////////////
+
+int get_process_memory_usage(char *buf, size_t buf_cap) {
+    if (!buf || buf_cap == 0)
+        return -1;
+    size_t bytes = 0;
+
+    #if defined(_WIN32)
+        PROCESS_MEMORY_COUNTERS pmc;
+        if (!GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+            goto fail;
+        bytes = (size_t)pmc.WorkingSetSize;
+
+    #elif defined(__APPLE__)
+        mach_task_basic_info info;
+        mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+        if (task_info(
+                mach_task_self(),
+                MACH_TASK_BASIC_INFO,
+                (task_info_t)&info,
+                &count
+            ) != KERN_SUCCESS)
+            goto fail;
+        bytes = (size_t)info.resident_size;
+
+    #elif defined(__linux__) || defined(__ANDROID__)
+        long rss_pages = 0;
+        FILE *f = fopen("/proc/self/statm", "r");
+        if (!f)
+            goto fail;
+        if (fscanf(f, "%*s %ld", &rss_pages) != 1) {
+            fclose(f);
+            goto fail;
+        }
+        fclose(f);
+        long page_size = sysconf(_SC_PAGESIZE);
+        if (page_size <= 0)
+            goto fail;
+        bytes = (size_t)rss_pages * (size_t)page_size;
+
+    #else
+        goto fail;
+
+    #endif
+
+    snprintf(buf, buf_cap, "%14s used  ", _get_memory_str(bytes));
+    return 0;
+
+    fail:
+    snprintf(buf, buf_cap, "%s", "Memory read error  ");
+    return -1;
+}
+
+char* get_memory_str(size_t bytes) {
+    // converts the int number of bytes to a string with appropriate units
+    static char buffer[64];
+    const char* units[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"};
+    const int num_units = sizeof(units) / sizeof(units[0]);
+    double b = (double)bytes;
+    int index = 0;
+    while (b >= 1024 && index < num_units - 1) {
+        b /= 1024.0;
+        index++;
+    }
+    if (index == 0) {
+        if (bytes == 1) {
+            snprintf(buffer, sizeof(buffer), "1 byte");
+        } else {
+            snprintf(buffer, sizeof(buffer), "%zu bytes", bytes);
+        }
+    } else {
+        snprintf(buffer, sizeof(buffer), "%.4f %s", b, units[index]);
+    }
+    return buffer;
+}
+
+////////////////////////////////////////////////////////
+
+///* TEST:
+// build: gcc c_bindings.c -o test_memory_usage_info.o
+// run:   ./test_memory_usage_info.o
+int main(void) {
+   char buf[64];
+
+    // Initial memory usage
+    if (get_process_memory_usage(buf, sizeof(buf)) == 0) {
+        printf("Initial memory: %s\n", buf);
+    } else {
+        printf("Memory read error\n");
+    }
+
+    // Allocate some memory
+    printf("Allocating 50 MB...\n");
+    char *data = malloc(50 * 1024 * 1024);
+    if (!data) {
+        printf("Allocation failed\n");
+        return 1;
+    }
+    memset(data, 0, 50 * 1024 * 1024); // touch memory so OS actually allocates
+
+        // Memory usage after allocation
+    if (get_process_memory_usage(buf, sizeof(buf)) == 0) {
+        printf("After allocation: %s\n", buf);
+    } else {
+        printf("Memory read error\n");
+    }
+
+    // Free memory
+    free(data);
+
+    // Memory usage after free
+    if (get_process_memory_usage(buf, sizeof(buf)) == 0) {
+        printf("After free: %s\n", buf);
+    } else {
+        printf("Memory read error\n");
+    }
+}
+//*/

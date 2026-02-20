@@ -580,9 +580,9 @@ get_formatted_messages :: proc(
 
 // Used C bindings for get_formatted_current_time() and get_formatted_elapsed_time() because I failed to get the local time in odin, only UTC. Also setting the timezone seems to require the UTC offset, which gets complicated because of daylights saving time. Also I couldn't find a way to format it via a user provided format string. see odin time package docs: https://pkg.odin-lang.org/core/time
 // binding odin to c: https://odin-lang.org/news/binding-to-c/
-when ODIN_OS == .Windows do foreign import current_time_info "./../c/current_time_info.lib" // path relative to this files parent dir
-when ODIN_OS == .Linux   do foreign import current_time_info "./../c/current_time_info.a"
-when ODIN_OS == .Darwin  do foreign import current_time_info "./../c/current_time_info.a"
+when ODIN_OS == .Windows do foreign import current_time_info "./../c/build/current_time_info.lib" // path relative to this files parent dir
+when ODIN_OS == .Linux   do foreign import current_time_info "./../c/build/current_time_info.a"
+when ODIN_OS == .Darwin  do foreign import current_time_info "./../c/build/current_time_info.a"
 foreign current_time_info {
 
     get_time_now_us :: proc(
@@ -678,7 +678,7 @@ get_formatted_elapsed_time :: proc(
     buffer_size: int = 32,
 ) -> (
     string,
-    bool
+    bool,
 ) {
     if log == nil do return "", false
 

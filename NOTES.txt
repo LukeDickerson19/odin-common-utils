@@ -1,14 +1,21 @@
 
 
 Odin Installed with:
-    https://odin-lang.org/docs/install/#others-unix
-        built from source
 
-    location:
-    /usr/local/Odin
+    linux:
+        https://odin-lang.org/docs/install/#others-unix
+            built from source
+
+        location:
+        /usr/local/Odin
+
+    windows:
+
+        location:
+        C:\Users\luciu\odin\odin.exe
 
 
-Usage:
+Odin Usage:
 
     build with cmd "odin build <project root dir>"
     run with cmd "./<executable_name>"
@@ -26,9 +33,13 @@ Logging Util:
 
         build c code (from project root dir):
             linux:
-                gcc -c src/c/current_time_info.c -o src/c/current_time_info.o
-                ar rcs src/c/current_time_info.a src/c/current_time_info.o
+                gcc -c src/c/current_time_info.c -o src/c/build/current_time_info.o
+                ar rcs src/c/current_time_info.a src/c/build/current_time_info.o
             windows:
+                rmdir /s /q src\c\build
+                cmake -S src\c -B src\c\build -G Ninja -DCMAKE_C_COMPILER=clang
+                cmake --build src\c\build
+
                 TODO: TO BE TESTED:
                     cl -TC -c src\c\current_time_info.c
                     lib -nologo src\c\current_time_info.obj -out:src\c\current_time_info.lib
@@ -39,7 +50,8 @@ Logging Util:
                 odin build examples/readme_example.odin -file -out:build/readme_example
                 odin build examples/full_example.odin -file -out:build/full_example
             windows:
-                tbd
+                odin build examples/readme_example.odin -file -out:build/readme_example.exe
+                odin build examples/full_example.odin -file -out:build/full_example.exe
 
     Run:
         linux:
@@ -51,8 +63,12 @@ Logging Util:
     To Do:
 
         test cross platform
+            update linux build folder structure now that were using cmake on windows
+                also test memory usage functions on linux, then use them in odin code, and delete memory_usage_*.odin
+            create release windows build
 
         update readme
+            finish readme example
         
 
     Backlog:
