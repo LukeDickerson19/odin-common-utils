@@ -53,14 +53,14 @@ Log :: struct {
     print: proc(
         log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
         msg:                string,              // message to print
-        i:                  u8          = 0,     // number of indents to put in front of the string, defaults to 0
-        ns:                 bool        = false, // print a new line in before the string, defaults to false
-        ne:                 bool        = false, // print a new line in after the string, defaults to false
+        i:                  u8          = 0,     // number of indents to put in front of the message, defaults to 0
+        ns:                 bool        = false, // print a new line before the message, defaults to false
+        ne:                 bool        = false, // print a new line after the message, defaults to false
         oc:                 Maybe(bool) = nil,   // output to console, defaults to nil, which uses the Log struct's output_to_console bool
         of:                 Maybe(bool) = nil,   // output to logfile, defaults to nil, which uses the Log struct's output_to_logfile bool
-        d:                  bool        = false, // draw a line on the blank line before or after the string, defaults to false
+        d:                  bool        = false, // draw a line on the blank line before or after the message, defaults to false
         overwrite_prev_msg: bool        = false, // overwrite previous printed message in console and logfile
-        end:                string      = "\n",  // last character(s) to print at the end of the string, defaults to "\n"
+        end:                string      = "\n",  // last character(s) to print at the end of each line, defaults to "\n"
         console_msg:        ^string     = nil,   // pointer to string printed to console, so user can use console_msg outside log->print()
         logfile_msg:        ^string     = nil,   // pointer to string printed to logfile, so user can use logfile_msg outside log->print()
     ) -> (
