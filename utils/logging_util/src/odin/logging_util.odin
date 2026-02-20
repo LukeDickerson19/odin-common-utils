@@ -1,7 +1,7 @@
 package logging_util
 
 import "core:fmt"
-// TODO: update when odin lang finishes its core:os update:
+// TODO: update os2 to os when odin lang finishes its core:os update:
 // https://odin-lang.org/news/moving-towards-a-new-core-os/
 // https://pkg.odin-lang.org/core/os
 import "core:os/os2"
