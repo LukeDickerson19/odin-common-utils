@@ -37,8 +37,8 @@ Log :: struct {
     start_time_microseconds: i32,        // microsecond component of unix start time
     prepend_memory_usage:    bool,       // prepend the memory used and allocated to the program using the logging util
     max_indents:             u8,         // max number of indents the user can indent a log message // NOTE: max_indents effects mini indents when prepending time or memory info, keep it as small as you estimate the max number of indents you'll use
-    max_message_chars:       int,        // max number of characters per message, tested w/ value: 500
-    max_line_chars:          int,        // max number of characters per line, tested w/ value: 150
+    max_message_chars:       int,        // max number of characters per message
+    max_line_chars:          int,        // max number of characters per line
 
     prev_console_message:    string,     // variables used for overwrite_prev_msg
     logfile_last_offset:     i64,        // byte offset where last log message started (defaults to 0)
