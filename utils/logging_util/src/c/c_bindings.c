@@ -11,9 +11,12 @@
 //     #include <mach/mach.h>
 // #elif defined(__linux__) || defined(__ANDROID__)
 //     #include <unistd.h>
+    #define gmtime_r(t, tm)   gmtime_s((tm), (t))
+    #define localtime_r(t, tm) localtime_s((tm), (t))
+    #define snprintf _snprintf
 #else
-    #include <sys/time.h>  // struct timeval, gettimeofday()
-    #include <unistd.h>        // usleep()
+    #include <sys/time.h>   // struct timeval, gettimeofday()
+    #include <unistd.h>     // usleep()
 #endif
 
 
@@ -257,7 +260,7 @@ static char* get_memory_str(size_t bytes) {
         if (bytes == 1) {
             snprintf(buffer, sizeof(buffer), "1 byte");
         } else {
-            snprintf(buffer, sizeof(buffer), "%zu bytes", bytes);
+            snprintf(buffer, sizeof(buffer), "%llu bytes", (unsigned long long)bytes);
         }
     } else {
         snprintf(buffer, sizeof(buffer), "%.4f %s", b, units[index]);
