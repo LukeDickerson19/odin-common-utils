@@ -5,9 +5,9 @@
 > Thread-safe logging util written in Odin (plus C ffi) supporting hierarchical indentation for log messages — useful for navigating logs in editors that support code folding.
 > 
 > Features:
-> - Arbitrary indentation levels per log call (via optional int argument)
+> - Arbitrary indentation levels per log call (via optional argument)
 > - Handles indentation for multi-line messages
-> - Microsecond datetime, time elapsed, and memory-usage prefixes (vertically aligned without breaking indentation!)
+> - Microsecond datetime, time elapsed, and memory-usage prefixes (vertically aligned without breaking indentation)
 > - Overwrite the previously printed log message (via optional bool argument)
 > - Output to console, log file, or both
 > - Thread-safety (using single global mutex)
