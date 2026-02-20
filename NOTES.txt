@@ -44,13 +44,6 @@ Logging Util:
                 mkdir src\c\build
                 cl -TC -c src\c\c_bindings.c /Fosrc\c\build\
                 lib -nologo src\c\build\c_bindings.obj -out:src\c\build\c_bindings.lib
-
-                # OLD WAY THATS NOW BROKEN:
-                # Remove-Item -Recurse -Force src\c\build
-                # cmake -S src\c -B src\c\build
-                # cmake -S src\c -B src\c\build -G Ninja -DCMAKE_C_COMPILER=clang
-                # cmake --build src\c\build
-
             source: https://odin-lang.org/news/binding-to-c/#example
 
         build odin code:
@@ -59,18 +52,11 @@ Logging Util:
                 odin build examples/readme_example.odin -file -out:build/readme_example
                 odin build examples/full_example.odin -file -out:build/full_example
             windows:
-
-                # from "x64 native Tools Command Prompt for VS" windows app
-                rd /s /q src\c\build # remove c code build dir
-                mkdir src\c\build # remake c code build dir
+                NOTE: run below cmds from "x64 native Tools Command Prompt for VS" windows app
+                rd /s /q build
+                mkdir build
                 odin build examples/readme_example.odin -file -out:build/readme_example.exe
                 odin build examples/full_example.odin -file -out:build/full_example.exe
-
-                # OLD WAY THATS NOW BROKEN:
-                # Remove-Item -Recurse -Force build
-                # mkdir build
-                # odin build examples/readme_example.odin -file -out:build/readme_example.exe
-                # odin build examples/full_example.odin -file -out:build/full_example.exe -extra-linker-flags:"src\c\build\c_bindings.lib ucrt.lib vcruntime.lib"
 
             # NOTE: building all files at once would require making them an odin collection cause each test/example has its own main function
 
@@ -80,13 +66,17 @@ Logging Util:
             cd log; ./../build/readme_example # cd into log dir b/c readme_example creates log.txt in the current working directory the executable is run from
         windows:
             build\full_example.exe
+            cd log
+            ..\build\readme_example.exe
 
     To Do:
 
         test cross platform
             DONE update linux build folder structure now that were using cmake on windows
             DONE test memory usage c functions on linux, then use them in odin code, and delete memory_usage_*.odin
-            TODO test on windows and create release windows build
+            DONE test on windows and create release windows build
+
+            fix thread safety test on windows
 
         update readme
             finish readme example

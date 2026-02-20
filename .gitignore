@@ -1,0 +1,7 @@
+
+
+
+# build directories
+utils/logging_util/src/c/build/
+utils/logging_util/build/
+
