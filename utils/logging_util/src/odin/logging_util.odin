@@ -32,11 +32,11 @@ Log :: struct {
 
     prepend_datetime_fmt:    string,     // format specifying the datetime to prepend to each line printed
     timezone:                string,     // timezone to use if prepend_datetime_fmt is not an empty string
-    prepend_elapsed_time:    bool,       // flag to prepend the time elapsed since the the Log's start_time
+    prepend_elapsed_time:    bool,       // flag to prepend the time elapsed since the the Log's unix_start_time
     unix_start_time:         i64,        // unix start time used for prepending elapsed time, defaults to time when init() is called
-    start_time_microseconds: i32,        // microsecond component of start time used for prepending time elapsed
+    start_time_microseconds: i32,        // microsecond component of unix start time
     prepend_memory_usage:    bool,       // prepend the memory used and allocated to the program using the logging util
-    max_indents:             u8,         // max number of indents the user can indent a log message // NOTE: max_indents effects mini indents when prepending time or memory info, keep it as small as you think the max number of indents you the user will use.
+    max_indents:             u8,         // max number of indents the user can indent a log message // NOTE: max_indents effects mini indents when prepending time or memory info, keep it as small as you estimate the max number of indents you'll use
     max_message_chars:       u32,        // max number of characters per message, tested w/ value: 500
     max_line_chars:          u32,        // max number of characters per line (must be less than MAX_MESSAGE_CHARS), tested w/ value: 150
 
