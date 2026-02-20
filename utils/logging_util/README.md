@@ -35,7 +35,7 @@ LOGGING_ENABLED :: true // toggle logging entirely for ALL log structs
 main :: proc() {
 
     // init any non default log settings
-	// see src/logging_util/logging_util.odin's Log struct for all settings
+	// for all settings, see the Log struct in: src/odin/logging_util.odin
 	log = logging_util.init(
 		enabled=LOGGING_ENABLED,
 		output_to_logfile = true,
