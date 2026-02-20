@@ -63,7 +63,7 @@ Logging Util:
     Run:
         linux:
             ./build/full_example # run from project root dir
-            cd log; ./../build/readme_example # cd into log dir b/c readme_example creates log.txt in the current working directory the executable is run from
+            cd log; ./../build/readme_example # cd into log dir b/c readme_example creates readme_example_log.txt in the current working directory the executable is run from
         windows:
             build\full_example.exe
             cd log
