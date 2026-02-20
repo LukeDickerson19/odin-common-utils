@@ -53,97 +53,97 @@ test_overwrite_prev_msg():
     test regular print() after overwrite_prev_msg
     
     log file with final test_overwrite_prev_msg output at:
-    /home/luke/rooms/tech/software/projects/odin-common-utils/utils/logging_util/log/full_example_log.txt
+    C:\Users\luciu\rooms\odin-common-utils\utils\logging_util\log\full_example_log.txt
         console indent  = "|   "
         log file indent = "    "
         
 
 thread_safety_test():
- -          00:00:00.001024  -      8.3398 MiB used  -      thread 0 iteration 0
- -          00:00:00.008099  -     20.3477 MiB used  -      thread 0 iteration 1
- -          00:00:00.014911  -     20.3477 MiB used  -      thread 0 iteration 2
- -          00:00:00.021929  -     20.3477 MiB used  -      thread 0 iteration 3
- -          00:00:00.028983  -     20.3477 MiB used  -      thread 0 iteration 4
- -          00:00:00.036334  -     20.3477 MiB used  -      thread 0 iteration 5
- -          00:00:00.042824  -     20.3477 MiB used  -      thread 0 iteration 6
- -          00:00:00.049345  -     20.3477 MiB used  -      thread 0 iteration 7
- -          00:00:00.056135  -     20.3477 MiB used  -      thread 0 iteration 8
- -          00:00:00.062971  -     20.3477 MiB used  -      thread 0 iteration 9
- -          00:00:00.069402  -     20.3477 MiB used  -      thread 0 iteration 10
- -          00:00:00.075683  -     20.3477 MiB used  -      thread 0 iteration 11
- -          00:00:00.082451  -     20.3477 MiB used  -      thread 0 iteration 12
- -          00:00:00.089152  -     20.3477 MiB used  -      thread 0 iteration 13
- -          00:00:00.095722  -     20.3477 MiB used  -      thread 0 iteration 14
- -          00:00:00.102291  -     20.3477 MiB used  -      thread 0 iteration 15
- -          00:00:00.108706  -     20.3477 MiB used  -      thread 0 iteration 16
- -          00:00:00.115104  -     20.3477 MiB used  -      thread 0 iteration 17
- -          00:00:00.122009  -     20.3477 MiB used  -      thread 0 iteration 18
- -          00:00:00.128743  -     20.3477 MiB used  -      thread 0 iteration 19
- -          00:00:00.135696  -     20.5430 MiB used  -      thread 2 iteration 0
- -          00:00:00.146232  -     20.5430 MiB used  -      thread 2 iteration 1
- -          00:00:00.152720  -     20.5430 MiB used  -      thread 2 iteration 2
- -          00:00:00.159115  -     20.5430 MiB used  -      thread 2 iteration 3
- -          00:00:00.165623  -     20.5430 MiB used  -      thread 2 iteration 4
- -          00:00:00.172143  -     20.5430 MiB used  -      thread 2 iteration 5
- -          00:00:00.178920  -     20.5430 MiB used  -      thread 2 iteration 6
- -          00:00:00.185762  -     20.5430 MiB used  -      thread 2 iteration 7
- -          00:00:00.196374  -     20.5430 MiB used  -      thread 2 iteration 8
- -          00:00:00.202869  -     20.5430 MiB used  -      thread 2 iteration 9
- -          00:00:00.209316  -     20.5430 MiB used  -      thread 2 iteration 10
- -          00:00:00.216125  -     20.5430 MiB used  -      thread 2 iteration 11
- -          00:00:00.222908  -     20.5430 MiB used  -      thread 2 iteration 12
- -          00:00:00.229307  -     20.5430 MiB used  -      thread 2 iteration 13
- -          00:00:00.235798  -     20.5430 MiB used  -      thread 2 iteration 14
- -          00:00:00.242304  -     20.5430 MiB used  -      thread 2 iteration 15
- -          00:00:00.248744  -     20.5430 MiB used  -      thread 2 iteration 16
- -          00:00:00.255188  -     20.5430 MiB used  -      thread 2 iteration 17
- -          00:00:00.261611  -     20.5430 MiB used  -      thread 2 iteration 18
- -          00:00:00.268640  -     20.5430 MiB used  -      thread 2 iteration 19
- -          00:00:00.275288  -     20.5508 MiB used  -      thread 1 iteration 0
- -          00:00:00.281889  -     20.5508 MiB used  -      thread 1 iteration 1
- -          00:00:00.288944  -     20.5508 MiB used  -      thread 1 iteration 2
- -          00:00:00.295663  -     20.5508 MiB used  -      thread 1 iteration 3
- -          00:00:00.302363  -     20.5508 MiB used  -      thread 1 iteration 4
- -          00:00:00.308740  -     20.5508 MiB used  -      thread 1 iteration 5
- -          00:00:00.315159  -     20.5508 MiB used  -      thread 1 iteration 6
- -          00:00:00.322122  -     20.5508 MiB used  -      thread 1 iteration 7
- -          00:00:00.328969  -     20.5508 MiB used  -      thread 1 iteration 8
- -          00:00:00.335396  -     20.5508 MiB used  -      thread 1 iteration 9
- -          00:00:00.342168  -     20.5508 MiB used  -      thread 1 iteration 10
- -          00:00:00.348625  -     20.5508 MiB used  -      thread 1 iteration 11
- -          00:00:00.355184  -     20.5508 MiB used  -      thread 1 iteration 12
- -          00:00:00.361551  -     20.5508 MiB used  -      thread 1 iteration 13
- -          00:00:00.368173  -     20.5508 MiB used  -      thread 1 iteration 14
- -          00:00:00.374945  -     20.5508 MiB used  -      thread 1 iteration 15
- -          00:00:00.381669  -     20.5508 MiB used  -      thread 1 iteration 16
- -          00:00:00.388786  -     20.5508 MiB used  -      thread 1 iteration 17
- -          00:00:00.395383  -     20.5508 MiB used  -      thread 1 iteration 18
- -          00:00:00.401877  -     20.5508 MiB used  -      thread 1 iteration 19
- -          00:00:00.408361  -     20.5547 MiB used  -      thread 3 iteration 0
- -          00:00:00.414949  -     20.5547 MiB used  -      thread 3 iteration 1
- -          00:00:00.421735  -     20.5547 MiB used  -      thread 3 iteration 2
- -          00:00:00.428712  -     20.5547 MiB used  -      thread 3 iteration 3
- -          00:00:00.435291  -     20.5547 MiB used  -      thread 3 iteration 4
- -          00:00:00.442727  -     20.5547 MiB used  -      thread 3 iteration 5
- -          00:00:00.449211  -     20.5547 MiB used  -      thread 3 iteration 6
- -          00:00:00.455747  -     20.5547 MiB used  -      thread 3 iteration 7
- -          00:00:00.462258  -     20.5547 MiB used  -      thread 3 iteration 8
- -          00:00:00.469113  -     20.5547 MiB used  -      thread 3 iteration 9
- -          00:00:00.475706  -     20.5547 MiB used  -      thread 3 iteration 10
- -          00:00:00.482198  -     20.5547 MiB used  -      thread 3 iteration 11
- -          00:00:00.488718  -     20.5547 MiB used  -      thread 3 iteration 12
- -          00:00:00.495298  -     20.5547 MiB used  -      thread 3 iteration 13
- -          00:00:00.501947  -     20.5547 MiB used  -      thread 3 iteration 14
- -          00:00:00.508512  -     20.5547 MiB used  -      thread 3 iteration 15
- -          00:00:00.515089  -     20.5547 MiB used  -      thread 3 iteration 16
- -          00:00:00.521414  -     20.5547 MiB used  -      thread 3 iteration 17
- -          00:00:00.527606  -     20.5547 MiB used  -      thread 3 iteration 18
- -          00:00:00.533838  -     20.5547 MiB used  -      thread 3 iteration 19
+ -          00:00:00.000298  -      5.9531 MiB used  -      thread 0 iteration 0
+ -          00:00:00.011822  -      5.9844 MiB used  -      thread 0 iteration 1
+ -          00:00:00.014104  -      5.9844 MiB used  -      thread 0 iteration 2
+ -          00:00:00.016209  -      5.9883 MiB used  -      thread 0 iteration 3
+ -          00:00:00.018280  -      5.9883 MiB used  -      thread 0 iteration 4
+ -          00:00:00.020427  -      5.9883 MiB used  -      thread 0 iteration 5
+ -          00:00:00.024783  -      5.9883 MiB used  -      thread 0 iteration 6
+ -          00:00:00.026977  -      5.9922 MiB used  -      thread 0 iteration 7
+ -          00:00:00.029154  -      5.9922 MiB used  -      thread 0 iteration 8
+ -          00:00:00.031359  -      5.9922 MiB used  -      thread 1 iteration 0
+ -          00:00:00.033794  -      5.9961 MiB used  -      thread 1 iteration 1
+ -          00:00:00.035893  -      5.9961 MiB used  -      thread 1 iteration 2
+ -          00:00:00.037924  -      5.9961 MiB used  -      thread 1 iteration 3
+ -          00:00:00.040100  -      5.9961 MiB used  -      thread 1 iteration 4
+ -          00:00:00.042321  -      5.9961 MiB used  -      thread 1 iteration 5
+ -          00:00:00.044596  -      5.9961 MiB used  -      thread 1 iteration 6
+ -          00:00:00.046822  -      6.0000 MiB used  -      thread 1 iteration 7
+ -          00:00:00.048908  -      6.0000 MiB used  -      thread 1 iteration 8
+ -          00:00:00.050985  -      6.0000 MiB used  -      thread 1 iteration 9
+ -          00:00:00.053107  -      6.0000 MiB used  -      thread 1 iteration 10
+ -          00:00:00.055135  -      6.0000 MiB used  -      thread 1 iteration 11
+ -          00:00:00.057427  -      6.0000 MiB used  -      thread 1 iteration 12
+ -          00:00:00.059437  -      6.0000 MiB used  -      thread 1 iteration 13
+ -          00:00:00.061503  -      6.0039 MiB used  -      thread 1 iteration 14
+ -          00:00:00.063516  -      6.0039 MiB used  -      thread 1 iteration 15
+ -          00:00:00.065641  -      6.0039 MiB used  -      thread 1 iteration 16
+ -          00:00:00.067815  -      6.0039 MiB used  -      thread 1 iteration 17
+ -          00:00:00.069904  -      6.0039 MiB used  -      thread 1 iteration 18
+ -          00:00:00.072285  -      6.0039 MiB used  -      thread 1 iteration 19
+ -          00:00:00.074357  -      5.9922 MiB used  -      thread 2 iteration 0
+ -          00:00:00.076513  -      5.9805 MiB used  -      thread 0 iteration 9
+ -          00:00:00.078755  -      5.9805 MiB used  -      thread 0 iteration 10
+ -          00:00:00.081132  -      5.9805 MiB used  -      thread 0 iteration 11
+ -          00:00:00.083304  -      5.9805 MiB used  -      thread 0 iteration 12
+ -          00:00:00.085385  -      5.9805 MiB used  -      thread 0 iteration 13
+ -          00:00:00.087558  -      5.9844 MiB used  -      thread 0 iteration 14
+ -          00:00:00.089701  -      5.9844 MiB used  -      thread 0 iteration 15
+ -          00:00:00.091754  -      5.9844 MiB used  -      thread 0 iteration 16
+ -          00:00:00.093769  -      5.9844 MiB used  -      thread 0 iteration 17
+ -          00:00:00.095799  -      5.9844 MiB used  -      thread 0 iteration 18
+ -          00:00:00.097856  -      5.9844 MiB used  -      thread 0 iteration 19
+ -          00:00:00.099950  -      5.9727 MiB used  -      thread 3 iteration 0
+ -          00:00:00.101999  -      5.9570 MiB used  -      thread 3 iteration 1
+ -          00:00:00.104411  -      5.9570 MiB used  -      thread 3 iteration 2
+ -          00:00:00.106434  -      5.9570 MiB used  -      thread 3 iteration 3
+ -          00:00:00.108525  -      5.9570 MiB used  -      thread 3 iteration 4
+ -          00:00:00.110642  -      5.9570 MiB used  -      thread 3 iteration 5
+ -          00:00:00.112708  -      5.9570 MiB used  -      thread 3 iteration 6
+ -          00:00:00.114765  -      5.9609 MiB used  -      thread 3 iteration 7
+ -          00:00:00.116847  -      5.9609 MiB used  -      thread 3 iteration 8
+ -          00:00:00.118874  -      5.9609 MiB used  -      thread 3 iteration 9
+ -          00:00:00.120904  -      5.9609 MiB used  -      thread 3 iteration 10
+ -          00:00:00.122941  -      5.9609 MiB used  -      thread 3 iteration 11
+ -          00:00:00.125034  -      5.9609 MiB used  -      thread 3 iteration 12
+ -          00:00:00.127315  -      5.9609 MiB used  -      thread 3 iteration 13
+ -          00:00:00.129491  -      5.9648 MiB used  -      thread 3 iteration 14
+ -          00:00:00.131588  -      5.9688 MiB used  -      thread 2 iteration 1
+ -          00:00:00.133698  -      5.9688 MiB used  -      thread 2 iteration 2
+ -          00:00:00.135712  -      5.9688 MiB used  -      thread 2 iteration 3
+ -          00:00:00.138019  -      5.9688 MiB used  -      thread 2 iteration 4
+ -          00:00:00.140125  -      5.9688 MiB used  -      thread 2 iteration 5
+ -          00:00:00.142159  -      5.9688 MiB used  -      thread 2 iteration 6
+ -          00:00:00.144343  -      5.9727 MiB used  -      thread 2 iteration 7
+ -          00:00:00.146504  -      5.9727 MiB used  -      thread 2 iteration 8
+ -          00:00:00.148743  -      5.9727 MiB used  -      thread 2 iteration 9
+ -          00:00:00.150882  -      5.9727 MiB used  -      thread 2 iteration 10
+ -          00:00:00.153095  -      5.9727 MiB used  -      thread 2 iteration 11
+ -          00:00:00.155081  -      5.9727 MiB used  -      thread 2 iteration 12
+ -          00:00:00.157185  -      5.9727 MiB used  -      thread 2 iteration 13
+ -          00:00:00.159262  -      5.9766 MiB used  -      thread 2 iteration 14
+ -          00:00:00.161300  -      5.9766 MiB used  -      thread 2 iteration 15
+ -          00:00:00.163444  -      5.9844 MiB used  -      thread 2 iteration 16
+ -          00:00:00.165726  -      5.9844 MiB used  -      thread 2 iteration 17
+ -          00:00:00.167897  -      5.9844 MiB used  -      thread 2 iteration 18
+ -          00:00:00.169927  -      5.9844 MiB used  -      thread 2 iteration 19
+ -          00:00:00.172115  -      5.9727 MiB used  -      thread 3 iteration 15
+ -          00:00:00.174583  -      5.9531 MiB used  -      thread 3 iteration 16
+ -          00:00:00.176629  -      5.9531 MiB used  -      thread 3 iteration 17
+ -          00:00:00.178633  -      5.9531 MiB used  -      thread 3 iteration 18
+ -          00:00:00.180837  -      5.9531 MiB used  -      thread 3 iteration 19
  -                                                   -      
- -          00:00:00.540300  -     18.5781 MiB used  -      test passes if all 4 x 20 thread/iteration combinations were printed (order does't matter)
--           00:00:00.547737  -     18.5781 MiB used  -  test complete, log file at:
--           00:00:00.547737  -     18.5781 MiB used  -  /home/luke/rooms/tech/software/projects/odin-common-utils/utils/logging_util/log/full_example_log.txt
+ -          00:00:00.183065  -      5.9219 MiB used  -      test passes if all 4 x 20 thread/iteration combinations were printed (order does't matter)
+-           00:00:00.185177  -      5.9219 MiB used  -  test complete, log file at:
+-           00:00:00.185177  -      5.9219 MiB used  -  C:\Users\luciu\rooms\odin-common-utils\utils\logging_util\log\full_example_log.txt
 -                                                    -  
 -                                                    -  
--           00:00:00.554117  -     18.5820 MiB used  -  closing log:
--           00:00:00.554117  -     18.5820 MiB used  -  /home/luke/rooms/tech/software/projects/odin-common-utils/utils/logging_util/log/full_example_log.txt
+-           00:00:00.187264  -      5.9219 MiB used  -  closing log:
+-           00:00:00.187264  -      5.9219 MiB used  -  C:\Users\luciu\rooms\odin-common-utils\utils\logging_util\log\full_example_log.txt

@@ -7,13 +7,10 @@ import "core:fmt"
 import "core:os/os2"
 import "core:io"
 import "core:strings"
-import "core:time"
 import "core:time/timezone"
 import "core:sync"
 import "core:mem"
 import "core:c"
-import "core:math"
-import "core:strconv" // used for high performance casting in get_process_memory_usage()
 import "core:slice"
 
 
@@ -192,6 +189,9 @@ init :: proc(
     log.prev_console_message = ""
     log.logfile_last_offset = 0
 
+    // enable ansi on windows (required for overwrite_prev_msg)
+    enable_ansi()
+
     return log
 }
 
@@ -282,6 +282,7 @@ print :: proc(
         // Print message to console
         os2.write_string(log.console, console_str)
         // fmt.fprint takes a file handle and variadic args, and prints them without appending a new line character
+        // os2.flush(log.console) // print immediately
 
         // Update previous message tracking
         delete(log.prev_console_message) // Free old string

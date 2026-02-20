@@ -71,13 +71,6 @@ Logging Util:
 
     To Do:
 
-        test cross platform
-            DONE update linux build folder structure now that were using cmake on windows
-            DONE test memory usage c functions on linux, then use them in odin code, and delete memory_usage_*.odin
-            DONE test on windows and create release windows build
-
-            fix thread safety test on windows
-
         update readme
             finish readme example
         
