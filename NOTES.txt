@@ -75,6 +75,11 @@ Logging Util:
 
     Backlog:
 
+        update c and python logging utils to have all the same feattures as the odin logging util
+            elapsed time
+            set_prepend_datetime_fmt()
+            etc.
+
         maybe experiment with updating print() to take a struct PrintOptionalArgs
             and pass it to:
                 print(),
