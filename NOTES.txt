@@ -71,9 +71,7 @@ Logging Util:
 
     To Do:
 
-        update readme
-            finish readme example
-        
+        done
 
     Backlog:
 
