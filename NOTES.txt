@@ -24,6 +24,10 @@ Odin Usage:
     
     source:
         https://odin-lang.org/docs/overview/
+
+
+    Odin Playground - web shell for odin to run simple scripts
+    https://codapi.org/odin/
         
 
 Logging Util:

@@ -12,10 +12,9 @@ import "core:thread"
 
 // global variable so you don't need to pass it to each function using it
 log: ^logging_util.Log
-f := logging_util.f // convenience procedure for string formatting
 LOGGING_ENABLED :: true // toggle logging entirely for ALL log structs
-
 project_root_dir: string
+
 
 
 main :: proc() {
@@ -69,7 +68,7 @@ test_print :: proc() {
     log->print("indented\nmulti\nline\nstring", i=5)
 
     // test formatted string
-    log->print(f("formatted string: %d %r %s", 7, 'f', "hellooo"), i=1);
+    log->print("formatted string: %d %r %s", 7, 'f', "hellooo", i=1);
 
     // test new line start
     log->print("new line start = true, draw line = false", i=1, ns=true)
@@ -102,18 +101,18 @@ test_print :: proc() {
     test_max_line_chars := 50
     log.max_message_chars = test_max_message_chars
     long_line:="ABCDEFGHIJKLMNOPQRSTUVWXYZ12345!@#$%^&*()-+_=漢字日本水áéöüñпривет你好مرحباनमस्ते←↑→↓↔↕↖↗↘↙∞±≈√∑©®™🌟🚀😄🐍🏖️🎉"
-    log->print(f("Test message truncation:\nset log.max_message_chars to %d", log.max_message_chars), i=2, ns=true)
-    log->print(f("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line), i=3)
+    log->print("Test message truncation:\nset log.max_message_chars to %d", log.max_message_chars, i=2, ns=true)
+    log->print("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, i=3)
     log.max_line_chars = test_max_line_chars
-    log->print(f("Test line truncation:\nset log.max_line_chars to %d", log.max_line_chars), i=2, ns=true)
+    log->print("Test line truncation:\nset log.max_line_chars to %d", log.max_line_chars, i=2, ns=true)
     log->print(long_line, i=3)
     log->print("Test both:", i=2, ns=true)
-    log->print(f("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line), i=3)
+    log->print("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s", long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, long_line, i=3)
     log.max_message_chars = default_max_message_chars
     log.max_line_chars    = default_max_line_chars
     log->print("truncation tests complete.", i=1, ns=true, d=true)
-    log->print(f("restored log.max_line_chars    to default: %d", log.max_line_chars),    i=1)
-    log->print(f("restored log.max_message_chars to default: %d", log.max_message_chars), i=1, ne=true)
+    log->print("restored log.max_line_chars    to default: %d", log.max_line_chars,    i=1)
+    log->print("restored log.max_message_chars to default: %d", log.max_message_chars, i=1, ne=true)
 
     // test prepend datetime
     /* datetime formats are based on strftime:
@@ -317,9 +316,9 @@ test_overwrite_prev_msg :: proc(_i:u8=0) {
 	log->print("test regular print() after overwrite_prev_msg", i=_i, ne=true)
 	if LOGGING_ENABLED do time.sleep(4*sleep_time)
 
-	log->print(f("log file with final test_overwrite_prev_msg output at:\n%s", log.filepath), i=_i)
-	log->print(f("console indent  = \"%s\"", log.console_indent), i=_i+1)
-	log->print(f("log file indent = \"%s\"", log.logfile_indent), i=_i+1, ne=true)
+	log->print("log file with final test_overwrite_prev_msg output at:\n%s", log.filepath, i=_i)
+	log->print("console indent  = \"%s\"", log.console_indent, i=_i+1)
+	log->print("log file indent = \"%s\"", log.logfile_indent, i=_i+1, ne=true)
     if LOGGING_ENABLED do time.sleep(6*sleep_time)
 
 }
@@ -341,7 +340,7 @@ thread_print_loop :: proc(t: ^thread.Thread) {
     _i = thread_data._i
 
     for i in 0..<ITERATIONS {
-        log->print(f("thread %d iteration %d", thread_id, i), i=_i)
+        log->print("thread %d iteration %d", thread_id, i, i=_i)
     }
 }
 
@@ -401,7 +400,7 @@ test_thread_safety :: proc(_i: u8 = 0) -> (ok: bool) {
         thread.destroy(t)
     }
 
-    log->print(f("test passes if all %d x %d thread/iteration combinations were printed (order does\'t matter)", THREAD_COUNT, ITERATIONS), i=_i, ns=true)
-	log->print(f("test complete, log file at:\n%s", log.filepath), i=_i-1, ne=true)
+    log->print("test passes if all %d x %d thread/iteration combinations were printed (order does\'t matter)", THREAD_COUNT, ITERATIONS, i=_i, ns=true)
+	log->print("test complete, log file at:\n%s", log.filepath, i=_i-1, ne=true)
     return true
 }

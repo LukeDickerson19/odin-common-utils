@@ -52,7 +52,7 @@ Log :: struct {
     // main print() procedure
     print: proc(
         log:                ^Log,
-        msg:                string,
+        msg:                ..any,
         i:                  u8          = 0,
         ns:                 bool        = false,
         ne:                 bool        = false,
@@ -225,7 +225,8 @@ close :: proc(
 
 print :: proc(
     log:                ^Log,                // you can call print() via log->print("message") because 'log' is a pointer to the Log struct
-    msg:                string,              // message to print
+    msg:                ..any,               // variadic message args
+    // msg:                string,              // message to print
     i:                  u8          = 0,     // number of indents to put in front of the message, defaults to 0
     ns:                 bool        = false, // print a new line before the message, defaults to false
     ne:                 bool        = false, // print a new line after the message, defaults to false
@@ -251,12 +252,31 @@ print :: proc(
         return false
     }
 
+
+    // handle string formatting
+    formatted_str: string
+    if len(msg) == 0 {
+        formatted_str = ""
+    } else if len(msg) == 1 {
+        if s, ok := msg[0].(string); ok {
+            formatted_str = s
+        } else {
+            formatted_str = fmt.tprintf("%v", msg[0])
+        }
+    } else {
+        if s, ok := msg[0].(string); ok {
+            formatted_str =  fmt.tprintf(s, ..msg[1:])
+        } else {
+            formatted_str = fmt.tprintf("%v", msg[0])
+        }
+    }
+
     // Get formatted string(s) for console and/or log file
     output_to_console: bool = (oc == nil) ? log.output_to_console : oc.(bool)
     output_to_logfile: bool = (of == nil) ? log.output_to_logfile : of.(bool)
 
     console_str, logfile_str, ok := get_formatted_messages(
-        log, msg,
+        log, formatted_str,
         output_to_console || console_msg != nil, // create console output if its to be printed or returned
         output_to_logfile || logfile_msg != nil, // create logfile output if its to be printed or returned
         i, ns, ne, d, end
@@ -345,6 +365,7 @@ print :: proc(
 }
 
 
+// format string + variadic args
 f :: proc(
     msg: string,    // message to format
     fmt_args: ..any // string format variadic parameters https://odin-lang.org/docs/overview/#variadic-parameters

@@ -5,7 +5,6 @@ import logging_util "../src/odin"
 
 // global variable so you don't need to pass it to each function using it
 log: ^logging_util.Log
-f := logging_util.f // convenience procedure for string formatting
 LOGGING_ENABLED :: true // toggle logging entirely for ALL log structs
 
 main :: proc() {
@@ -27,7 +26,7 @@ main :: proc() {
 	log->print("b", i=1)
 	log->print("c", i=2)
 	log->print("indented\nmulti\nline\nstring", i=3)
-	log->print(f("formatted string: %d %r %s", 7, 'f', "hellooo"), i=1)
+	log->print("formatted string: %d %r %s", 7, 'f', "hellooo", i=1)
 	log->print("new line before log message", i=1, ns=true) // ns = newline start
 	log->print("new line after log message", i=1, ne=true) // ne = newline end
 	log->print("new line after log message\n", i=1)
