@@ -28,7 +28,21 @@ Odin Usage:
 
     Odin Playground - web shell for odin to run simple scripts
     https://codapi.org/odin/
-        
+
+
+To Do:
+
+    checkout odin debugging
+        odin build ... -debug   # add debug info
+        gdb ./build/full_example
+        run
+        # when it crashes → type
+        bt              # backtrace
+
+    auto generate c bindings in odin with a c header file
+        https://github.com/karl-zylinski/odin-c-bindgen
+        demo https://www.youtube.com/watch?v=cwQWUjkw7hE
+
 
 Logging Util:
 
@@ -74,6 +88,8 @@ Logging Util:
             ..\build\readme_example.exe
 
     To Do:
+
+        backlog
 
     Backlog:
 
