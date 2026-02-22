@@ -1,0 +1,5 @@
+[INFO ] --- [2026-02-22 01:57:16] [test_odin_log.odin:61:main()] starting program
+[INFO ] --- [2026-02-22 01:57:16] [test_odin_log.odin:11:bar()] inside bar
+[DEBUG] --- [2026-02-22 01:57:16] [test_odin_log.odin:7:foo()] inside foo
+[WARN ] --- [2026-02-22 01:57:16] [test_odin_log.odin:63:main()] something looks off
+[ERROR] --- [2026-02-22 01:57:16] [test_odin_log.odin:64:main()] something went wrong

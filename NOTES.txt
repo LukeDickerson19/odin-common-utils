@@ -75,26 +75,17 @@ Logging Util:
 
     To Do:
 
-        max chars
-
-            BEFORE adding prepended info and indents and stuff
-            if len msg0 > max msg len {
-                create new string with slice of msg0 (0:max msg len)
-                msg_trucated = true
-            }
-
-            ... append lines w/ prepend info to string builder ...
-                if len(line) > max line len:
-                    append slice of line (0:max line len)
-                    append truncated line message
-
-
     Backlog:
 
-        update c and python logging utils to have all the same feattures as the odin logging util
-            elapsed time
-            set_prepend_datetime_fmt()
-            etc.
+        update odin logging util to incorporate odin logger
+            it has log levels, source info souch as calling file, line number, and procedure
+				https://pkg.odin-lang.org/core/log/
+            i could also just pass the output of my code to this logger?
+            i might also be able to use the caller_location directly (calling file, line number, and procedure)
+                https://pkg.odin-lang.org/base/runtime/#print_caller_location
+            also you might be able to pass custom functions to the odin logger which might be easier?
+
+            see example file examples/test_odin_log.odin
 
         maybe experiment with updating print() to take a struct PrintOptionalArgs
             and pass it to:
@@ -108,4 +99,9 @@ Logging Util:
 
             hopefully print() calls will look something like
                 print("message", { .i=1, ... })
+
+        update c and python logging utils to have all the same feattures as the odin logging util
+            elapsed time
+            set_prepend_datetime_fmt()
+            etc.
 
