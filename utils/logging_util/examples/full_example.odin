@@ -163,8 +163,8 @@ test_print :: proc() {
         output_to_console=true,
         output_to_logfile=false,
         prepend_datetime_fmt="%y-%m-%d %H:%M:%S.%f %Z",
-        // timezone="local",
-        timezone="UTC",
+        timezone="local",
+        // timezone="UTC",
         prepend_elapsed_time=true,
         prepend_memory_usage=true,
     )

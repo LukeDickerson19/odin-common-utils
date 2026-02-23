@@ -7,11 +7,11 @@ import "core:fmt"
 import "core:os/os2"
 import "core:io"
 import "core:strings"
-import "core:time/timezone"
 import "core:sync"
 import "core:mem"
 import "core:c"
 import "core:slice"
+import "base:runtime"
 
 
 
@@ -209,7 +209,7 @@ close :: proc(
     }
     if verbose {
         log->print(
-            f("closing log:\n%s", log.filepath),
+            "closing log:\n%s", log.filepath,
             i=i, ns=ns, ne=ne, oc=oc, of=of, d=d,
             overwrite_prev_msg=overwrite_prev_msg, end=end,
             console_msg=console_msg, logfile_msg=logfile_msg,
@@ -252,6 +252,8 @@ print :: proc(
         return false
     }
 
+    // store context for using allocators via FFI
+    context = runtime.default_context()
 
     // handle string formatting
     formatted_str: string
@@ -295,7 +297,15 @@ print :: proc(
         }
 
         // Print message to console
-        os2.write_string(log.console, console_str)
+        when TARGET_ANDROID {
+            p := 4 // priority
+            t := strings.clone_to_cstring(ANDROID_LOG_TAG, context.temp_allocator)
+            m := strings.clone_to_cstring(console_str, context.temp_allocator)
+            __android_log_print(p, t, m)
+        } else {
+            os2.write_string(log.console, console_str)
+        }
+
         // fmt.fprint takes a file handle and variadic args, and prints them without appending a new line character
         // os2.flush(log.console) // print immediately
 
@@ -362,15 +372,6 @@ print :: proc(
     if logfile_msg != nil do logfile_msg^ = logfile_str; else do delete(logfile_str)
 
     return true
-}
-
-
-// format string + variadic args
-f :: proc(
-    msg: string,    // message to format
-    fmt_args: ..any // string format variadic parameters https://odin-lang.org/docs/overview/#variadic-parameters
-) -> string {
-    return fmt.tprintf(msg, ..fmt_args)
 }
 
 
@@ -460,6 +461,9 @@ get_formatted_messages :: proc(
         fmt.eprintln("LOG ERROR: num indents, i, must be between 0 and log.max_indents of %d (inclusive), or log.max_indents must be increased in its initialization", log.max_indents)
         return "", "", false
     }
+
+    // store context for using allocators via FFI
+    context = runtime.default_context()
 
     // Prepend info buffers and variables
     p: strings.Builder // p = prepended info text
@@ -874,30 +878,6 @@ get_formatted_memory_usage :: proc(
 
 
 @(private)
-get_memory_str :: proc(bytes: u64) -> string {
-    units     := [?]string{"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
-    b         := f64(bytes)
-    unit_idx  := 0
-
-    // Scale the value down
-    for b >= 1024 && unit_idx < len(units) - 1 {
-        b /= 1024.0
-        unit_idx += 1
-    }
-
-    if unit_idx == 0 {
-        if bytes == 1 {
-            return "1 byte"
-        }
-        return fmt.tprintf("%d bytes", bytes)
-    }
-
-    // %.4f matches your C snprintf precisely
-    return fmt.tprintf("%.4f %s", b, units[unit_idx])
-}
-
-
-@(private)
 set_prepend_datetime_fmt_and_timezone :: proc(
     log: ^Log,
     new_prepend_datetime_fmt: string,
@@ -931,4 +911,20 @@ set_prepend_datetime_fmt_and_timezone :: proc(
     }
 }
 
+
+// handle android logging
+ANDROID_LOG_TAG :: "ODIN_FFI"
+TARGET_ANDROID :: #config(IS_ANDROID, false)
+when TARGET_ANDROID {
+    foreign import liblog "system:log"
+    foreign liblog {
+        // Define specific signatures for 1 and 2 arguments to avoid the variadic spread issue
+        __android_log_print :: proc(
+            prio: i32,
+            tag,
+            fmt: cstring,
+            #c_vararg args: ..any,
+        ) -> i32 ---
+    }
+}
 

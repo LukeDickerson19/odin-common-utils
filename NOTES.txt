@@ -30,6 +30,10 @@ Odin Usage:
     https://codapi.org/odin/
 
 
+Odin Pros/Cons
+
+    https://www.reddit.com/r/odinlang/comments/1i01ihm/do_odin_has_any_plans_to_support_asyncnon/
+
 To Do:
 
     checkout odin debugging
@@ -42,6 +46,10 @@ To Do:
     auto generate c bindings in odin with a c header file
         https://github.com/karl-zylinski/odin-c-bindgen
         demo https://www.youtube.com/watch?v=cwQWUjkw7hE
+
+    compare these examples with how i did it
+    https://github.com/odin-lang/examples
+    https://github.com/odin-lang/Odin/blob/master/examples/demo/demo.odin
 
 
 Logging Util:
@@ -88,6 +96,9 @@ Logging Util:
             ..\build\readme_example.exe
 
     To Do:
+
+        incorporate android platform handling currently in flutter_odin_ffi app in this logging util instead
+            if odin logger doesn't handle it
 
         backlog
 
