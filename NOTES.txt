@@ -53,6 +53,7 @@ To Do:
 
 
 Logging Util:
+    NOTE: theres 2 versions of this logging util in odin, the other version is in flutter-common-uitls/apps/ffi/flutter_odin_ffi and it can be run on android, among other platforms
 
     Build:
 
