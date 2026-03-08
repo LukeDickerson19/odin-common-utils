@@ -24,10 +24,10 @@ main :: proc() {
     // see src/logging_util.odin's Log struct for all settings
     log = logging_util.init(
         enabled=LOGGING_ENABLED,
-        output_to_logfile = true,
-        filepath = filepath.join({ project_root_dir, "log", "full_example_log.txt" }),
-        clear_old_log = true,
-        output_to_console = true,
+        output_to_logfile=true,
+        filepath=filepath.join({ project_root_dir, "log", "full_example_log.txt" }),
+        clear_old_log=true,
+        output_to_console=true,
     )
     // close the log to free memory at the end of the scope
     defer {

@@ -59,7 +59,7 @@ Logging Util:
 
         # NOTE: only use the below commands (faster compiling) for development. Use the commands in the build scripts for releasing production executables with performance optimizations turned on (and slower compiling).
 
-        build c code (from project root dir):
+        build c code (from logging_util project root dir):
             linux:
                 rm -rf src/c/build/
                 mkdir src/c/build/

@@ -23,8 +23,8 @@
 
 //////////////// current time functions ////////////////
 
-// get_time_now_us() gets the current unix time with microsecond precision
-int get_time_now_us(
+
+int get_current_unix_time(
     int64_t *unix_seconds,
     int32_t *microseconds
 ) {
@@ -49,25 +49,19 @@ int get_time_now_us(
         *microseconds = (int32_t)tv.tv_usec; 
     #endif
 
-    return 0;
+    return 0;    
 }
 
-/* format_time_us() returns the current datetime as a formatted string (supports microsecond level resolution with "%f" format)
-    - timezone: "local" or "UTC", defaults to UTC
-    - format:   datetime formats are based on strftime:
-            https://man7.org/linux/man-pages/man3/strftime.3.html
-            plus %f format for microseconds like in python:
-            https://strftime.org/
-    */
-int format_time_us(
+
+int format_datetime_str(
     int64_t unix_seconds,
     int32_t microseconds,
-    const char *timezone,   // "UTC" | "local"
+    const char *timezone,
     const char *format,
-    char *out,
+    char *datetime_str,
     size_t datetime_str_capacity
 ) {
-    if (!format || !out) return -1;
+    if (!format || !datetime_str) return -1;
 
     // get current datetime in local or UTC timezone
     struct tm tm_info;
@@ -111,48 +105,40 @@ int format_time_us(
         memcpy(expanded_fmt + prefix_len + 6, us_ptr + 2, suffix_len); // Copy suffix
         expanded_fmt[total_len - 1] = '\0'; // Null-terminate
     }
-    strftime(out, datetime_str_capacity, expanded_fmt, &tm_info);
+    strftime(datetime_str, datetime_str_capacity, expanded_fmt, &tm_info);
     free(expanded_fmt);
     return 0;
 }
 
-// Elapsed time since start (seconds and microseconds)
-int elapsed_us_since(
+
+int get_elapsed_time(
     int64_t start_sec,
     int32_t start_usec,
-    int32_t *out_sec,
-    int32_t *out_usec
+    int64_t end_sec,
+    int32_t end_usec,
+    int32_t *elapsed_sec,
+    int32_t *elapsed_usec
 ) {
-    if (!out_sec || !out_usec) return -1;
-
-    int64_t now_sec;
-    int32_t now_usec;
-
-    if (get_time_now_us(&now_sec, &now_usec) != 0)
-        return -2;
-
-    int32_t sec  = (int32_t)(now_sec - start_sec);
-    int32_t usec = now_usec - start_usec;
+    if (!elapsed_sec || !elapsed_usec) return -1;
+    *elapsed_sec  = (int32_t)(end_sec - start_sec);
+    *elapsed_usec = end_usec - start_usec;
 
     // handle microsecond underflow
-    if (usec < 0) {
-        usec += 1000000;
-        sec  -= 1;
+    if (*elapsed_usec < 0) {
+        *elapsed_usec += 1000000;
+        *elapsed_sec  -= 1;
     }
-
-    *out_sec  = sec;
-    *out_usec = usec;
     return 0;
 }
 
-// Format elapsed time with format HH:MM:SS.ffffff
-int format_elapsed_us(
+
+int format_elapsed_time(
     int32_t elapsed_sec,
     int32_t elapsed_usec,
-    char *out,
-    size_t out_cap
+    char *elapsed_time_str,
+    size_t elapsed_time_str_cap
 ) {
-    if (!out || out_cap < 16) return -1;
+    if (!elapsed_time_str || elapsed_time_str_cap < 16) return -1;
     if (elapsed_usec < 0 || elapsed_usec >= 1000000) return -2;
 
     int hours   =  elapsed_sec / 3600;
@@ -161,14 +147,14 @@ int format_elapsed_us(
 
     // formatted so HH can exceed 24 for long durations
     int n = snprintf(
-        out,
-        out_cap,
+        elapsed_time_str,
+        elapsed_time_str_cap,
         "%02d:%02d:%02d.%06d",
         hours, minutes, seconds, elapsed_usec
     );
 
-    // Size out of bounds
-    if (n < 0 || (size_t)n >= out_cap) return -3;
+    // Size elapsed_time_str of bounds
+    if (n < 0 || (size_t)n >= elapsed_time_str_cap) return -3;
 
     return 0;
 }

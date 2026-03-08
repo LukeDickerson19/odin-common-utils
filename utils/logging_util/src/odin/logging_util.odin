@@ -94,9 +94,9 @@ Log :: struct {
 
 init :: proc(
     enabled:                 bool      = true,
-    output_to_logfile:       bool      = true,
+    output_to_logfile:       bool      = false,
     filepath:                string    = "",
-    clear_old_log:           bool      = true, // flag to clear the log file or not
+    clear_old_log:           bool      = false, // flag to clear the log file or not
 	logfile_indent:          string    = "    ",
     output_to_console:       bool      = true,
 	console:                 ^os2.File = {}, // {} maps to os2.stdout
@@ -413,9 +413,9 @@ set_start_time :: proc(log: ^Log, unix_start_time: i64 = 0, microseconds: i32 = 
     if unix_start_time == 0 {
         start_sec: i64
         start_usec: i32
-        rc: c.int = get_time_now_us(&start_sec, &start_usec)
+        rc: c.int = get_current_unix_time(&start_sec, &start_usec)
         if rc != 0 {
-            fmt.eprintf("LOG ERROR: init() call to FFI C function get_time_now_us() failed with return code %d\n", rc)
+            fmt.eprintf("LOG ERROR: init() call to FFI C function get_current_unix_time() failed with return code %d\n", rc)
             start_sec = 0
             start_usec = 0
         }
@@ -482,9 +482,20 @@ get_formatted_messages :: proc(
         remaining_indents := log.max_indents + 1 - num_indents
         for _ in 0..<remaining_indents do strings.write_rune(&p, mini_indent)
 
+        // get current time if needed
+        unix_sec: i64 = 0
+        micro_sec: i32 = 0
+        if log.prepend_datetime_fmt != "" || log.prepend_elapsed_time {
+            rc: c.int = get_current_unix_time(&unix_sec, &micro_sec)
+            if rc != 0 {
+                fmt.eprintf("LOG ERROR: faile to get current time for prepending: return code %d\n", rc)
+            }
+        }
+
         // Prepend datetime in specified format
-        if log.prepend_datetime_fmt != "" {
+        if log.prepend_datetime_fmt != "" && unix_sec != 0 {
             datetime_str, ok := get_formatted_current_time(
+                unix_sec, micro_sec,
                 log.timezone,
                 log.prepend_datetime_fmt
             )
@@ -498,14 +509,14 @@ get_formatted_messages :: proc(
         }
 
         // Prepend elapsed time since log's start time in HH:MM:SS.ffffff format
-        if log.prepend_elapsed_time {
-            elapsed_time_str, ok := get_formatted_elapsed_time(log)
+        if log.prepend_elapsed_time && unix_sec != 0 {
+            elapsed_time_str, ok := get_formatted_elapsed_time(log, unix_sec, micro_sec)
             if !ok {
                 fmt.eprintln("LOG ERROR: failed to get elapsed time for prepending")
                 elapsed_time_str = "LOG ERROR: failed to get elapsed time"
             }
             // fmt.println("elapsed_time_str:", elapsed_time_str)
-            if log.prepend_datetime_fmt != "" {
+            if log.prepend_datetime_fmt != ""{
                 strings.write_rune(&p, div_mark)
                 strings.write_string(&p, "  ")
             }
@@ -522,7 +533,7 @@ get_formatted_messages :: proc(
                 mem_usage_str = "LOG ERROR failed to get memory usage"
             }
             // fmt.println("mem_usage_str:", mem_usage_str)
-            if log.prepend_datetime_fmt != "" || log.prepend_elapsed_time {
+            if (log.prepend_datetime_fmt != "" || log.prepend_elapsed_time) && unix_sec != 0 {
                 strings.write_rune(&p, div_mark)
                 strings.write_string(&p, "  ")
             }
@@ -705,28 +716,30 @@ when ODIN_OS == .Linux   do foreign import c_bindings "./../c/build/libc_binding
 when ODIN_OS == .Darwin  do foreign import c_bindings "./../c/build/libc_bindings.a"
 foreign c_bindings {
 
-    get_time_now_us :: proc(
+    get_current_unix_time :: proc(
         unix_seconds: ^c.int64_t,
         microseconds: ^c.int32_t,
     ) -> c.int ---
 
-    format_time_us :: proc(
+    format_datetime_str :: proc(
         unix_seconds: c.int64_t,
         microseconds: c.int32_t,
         timezone: cstring,
         format: cstring,
-        out: cstring,
-        out_cap: c.size_t,
+        datetime_str: cstring,
+        datetime_str_capacity: c.size_t,
     ) -> c.int ---
 
-    elapsed_us_since :: proc(
+    get_elapsed_time :: proc(
         start_sec: c.int64_t,
         start_usec: c.int32_t,
-        out_sec: ^c.int32_t,
-        out_usec: ^c.int32_t,
+        end_sec: c.int64_t,
+        end_usec: c.int32_t,
+        elapsed_sec: ^c.int32_t,
+        elapsed_usec: ^c.int32_t,
     ) -> c.int ---
 
-    format_elapsed_us :: proc(
+    format_elapsed_time :: proc(
         elapsed_sec: c.int32_t,
         elapsed_usec: c.int32_t,
         out: cstring,
@@ -751,6 +764,8 @@ foreign c_bindings {
     Returns: the formatted datetime string (or empty on error) */
 @(private)
 get_formatted_current_time :: proc(
+    unix_sec: i64,
+    micro_sec: i32,
     timezone:    string,
     format:      string,
     buffer_size: int = 128,
@@ -758,15 +773,6 @@ get_formatted_current_time :: proc(
     string,
     bool,
 ) {
-
-    // get current time in seconds + microseconds
-    unix_sec: i64
-    micro_sec: i32
-    rc: c.int = get_time_now_us(&unix_sec, &micro_sec)
-    if rc != 0 {
-        fmt.eprintf("LOG ERROR: get_formatted_current_time() call to FFI C function get_time_now_us() failed with return code %d\n", rc)
-        return "", false
-    }
 
     // allocate empty cstring of buffer_size
     buffer, err := mem.alloc(buffer_size)
@@ -778,7 +784,7 @@ get_formatted_current_time :: proc(
     defer mem.free(buffer)
 
     // format the time string
-    rc = format_time_us(
+    rc: c.int = format_datetime_str(
         unix_sec,
         micro_sec,
         cstring(raw_data(timezone)),
@@ -787,7 +793,7 @@ get_formatted_current_time :: proc(
         c.size_t(buffer_size)
     )
     if rc != 0 {
-        fmt.eprintf("LOG ERROR: get_formatted_current_time() call to FFI C function format_time_us() failed with return code %d\n", rc)
+        fmt.eprintf("LOG ERROR: get_formatted_current_time() call to FFI C function format_datetime_str() failed with return code %d\n", rc)
         return "", false
     }
 
@@ -801,6 +807,8 @@ get_formatted_current_time :: proc(
 @(private)
 get_formatted_elapsed_time :: proc(
     log: ^Log,
+    current_time_unix_sec: i64,
+    current_time_micro_sec: i32,
     buffer_size: int = 32,
 ) -> (
     string,
@@ -812,14 +820,16 @@ get_formatted_elapsed_time :: proc(
     elapsed_usec: i32 // elapsed microseconds since log.start_usec
 
     // compute elapsed time since start_sec/start_usec
-    rc: c.int = elapsed_us_since(
+    rc: c.int = get_elapsed_time(
         log.unix_start_time,
         log.start_time_microseconds,
+        current_time_unix_sec,
+        current_time_micro_sec,
         &elapsed_sec,
         &elapsed_usec
     )
     if rc != 0 {
-        fmt.eprintf("LOG ERROR: get_formatted_elapsed_time() call to FFI C function elapsed_us_since() failed with return code %d\n", rc)
+        fmt.eprintf("LOG ERROR: get_formatted_elapsed_time() call to FFI C function get_elapsed_time() failed with return code %d\n", rc)
         return "", false
     }
 
@@ -833,14 +843,14 @@ get_formatted_elapsed_time :: proc(
     defer mem.free(buffer)
 
     // format elapsed time as HH:MM:SS.ffffff
-    rc = format_elapsed_us(
+    rc = format_elapsed_time(
         elapsed_sec,
         elapsed_usec,
         elapsed_time_cstr,
         c.size_t(buffer_size),
     )
     if rc != 0 {
-        fmt.eprintf("LOG ERROR: get_formatted_elapsed_time() call to FFI C function format_elapsed_us() failed with return code %d\n", rc)
+        fmt.eprintf("LOG ERROR: get_formatted_elapsed_time() call to FFI C function format_elapsed_time() failed with return code %d\n", rc)
         return "", false
     }
 

@@ -12,16 +12,16 @@ a
     
     new line after log message
     
--           2026-02-19 18:57:20.491876 UTC  -  multiline
--           2026-02-19 18:57:20.491876 UTC  -  message
--           2026-02-19 18:57:20.491876 UTC  -  with
--           2026-02-19 18:57:20.491876 UTC  -  prepend_datetime_fmt
--               2.3359 MiB used  -  multiline
--               2.3359 MiB used  -  message
--               2.3359 MiB used  -  with
--               2.3359 MiB used  -  prepend_memory_usage
--           2026-02-19 18:57:20.508303 PST  -      2.4492 MiB used  -  message
- -          2026-02-19 18:57:20.514758 PST  -      2.4492 MiB used  -      with
- -          2026-02-19 18:57:20.524537 PST  -      2.4531 MiB used  -      both
-  -         2026-02-19 18:57:20.534909 PST  -      2.4531 MiB used  -          and
-   -        2026-02-19 18:57:20.545077 PST  -      2.4531 MiB used  -              indents
+-           2026-03-07 20:12:35.639609 UTC  -  multiline
+-           2026-03-07 20:12:35.639609 UTC  -  message
+-           2026-03-07 20:12:35.639609 UTC  -  with
+-           2026-03-07 20:12:35.639609 UTC  -  prepend_datetime_fmt
+-               2.6016 MiB used  -  multiline
+-               2.6016 MiB used  -  message
+-               2.6016 MiB used  -  with
+-               2.6016 MiB used  -  prepend_memory_usage
+-           2026-03-07 20:12:35.655255 MST  -      2.6641 MiB used  -  message
+ -          2026-03-07 20:12:35.667161 MST  -      2.6641 MiB used  -      with
+ -          2026-03-07 20:12:35.674237 MST  -      2.6641 MiB used  -      both
+  -         2026-03-07 20:12:35.680843 MST  -      2.6641 MiB used  -          and
+   -        2026-03-07 20:12:35.687413 MST  -      2.6641 MiB used  -              indents
